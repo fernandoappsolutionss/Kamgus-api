@@ -46,7 +46,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # -----------------------------------------------------------------------------
 # Apache configuration
 # -----------------------------------------------------------------------------
-RUN a2enmod rewrite headers
+# Ensure only ONE MPM is loaded. php:8.1-apache uses mod_php which requires prefork.
+# Disable any other MPMs that may be enabled in the base image.
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true \
+ && a2enmod mpm_prefork \
+ && a2enmod rewrite headers
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
