@@ -202,7 +202,7 @@ class ServicePaymentController extends Controller
     public function update(Request $request, $id) //refreshCheckoutSessionStatusInvitado?idservicio
     {
         //
-        //define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+        // hardcoded Stripe key removed; use env('STRIPE_SECRET') / env('STRIPE_SECRET_TEST')
 
         $serviceId = $id;
         $service = Service::find($serviceId);
@@ -251,7 +251,7 @@ class ServicePaymentController extends Controller
         ])
         ->whereRaw("SHA2(driver_services.driver_id, 256) = ?", [$driverId])
         ->first();
-        //define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+        // hardcoded Stripe key removed; use env('STRIPE_SECRET') / env('STRIPE_SECRET_TEST')
         $precioSugerido =  !empty($driverService) ? $driverService->suggested_price: 0;
 
         if(!empty($request->role) && $request->role === "Administrador"){// && !User::find($request->role)->hasRole("Conductor")){

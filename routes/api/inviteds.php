@@ -45,7 +45,8 @@ Route::prefix('v2')->group(function () {
     });
     Route::get('/old/{id?}', [UserController::class, "users_old_db"]);
     Route::get('/invited/cs/{id}', function($id){
-        define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+        // STRIPE_SK_TEST defined automatically inside StripeCustomClass
+        // when env STRIPE_SECRET_TEST is set; no hardcoded key here.
         return StripeCustomClass::getInstance()->getCheckoutSession($id);
     });
 });

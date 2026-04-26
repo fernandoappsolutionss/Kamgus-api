@@ -109,7 +109,7 @@ class PaymentController extends Controller
         $this->validate($request, $rules);
 
         
-        //\Stripe\Stripe::setApiKey("***REMOVED-STRIPE-PUB***");
+        // hardcoded Stripe pk removed; use env('STRIPE_KEY') if needed
         \Stripe\Stripe::setApiKey(StripeCustomClass::getInstance()->getPublicKey());
 
         try {

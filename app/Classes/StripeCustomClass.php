@@ -2,13 +2,14 @@
 namespace App\Classes;
 
 
-//define("F_ENVIROMENT", 'enviroment');
-define("F_ENVIROMENT", config('app.env'));
-define("STRIPE_SK", 
-    F_ENVIROMENT === 'production' ?
-    '***REMOVED-STRIPE-LIVE***' : //Production stripe key
-    '***REMOVED-STRIPE-TEST***'
-); 
+if (!defined('F_ENVIROMENT')) {
+    define('F_ENVIROMENT', config('app.env'));
+}
+// Stripe secret comes from env. In production read STRIPE_SECRET; for local/staging
+// set STRIPE_SECRET (test key) directly. NEVER hardcode keys here.
+if (!defined('STRIPE_SK')) {
+    define('STRIPE_SK', env('STRIPE_SECRET', ''));
+}
 //importando libreria restful
 
 //use Restserver\Libraries\REST_Controller;
@@ -212,39 +213,39 @@ class StripeCustomClass {
     }
     public function confirmPaymentTest($customer_id, $paymentMethodId, $amount, $fee, $currency = 'usd'){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->confirmPayment($customer_id, $paymentMethodId, $amount, $fee, $currency);
     }
     public function createCustomerTest($userId, $name, $lastname, $email, $stripeCustomerId = null){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->createCustomer($userId, $name, $lastname, $email, $stripeCustomerId);
     }
     public function createSetupIntentTest($customer_id){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->createSetupIntent($customer_id);
     }
     public function createEphemeralKeysTest($customer_id){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->createEphemeralKeys($customer_id);
         
     }
     public function getPaymentMethodsTest($customer_id){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->getPaymentMethods($customer_id);
         
     }
     public function removePaymentMethodTest($customer_id){
         if(!defined("STRIPE_SK_TEST")){
-            define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
         }
         return $this->removePaymentMethod($customer_id);
         

@@ -7,7 +7,7 @@ use App\Classes\StripeCustomClass;
 use App\Models\Configuration;
 
 defined('BASEPATH') OR exit('No direct script access allowed');
-//define("STRIPE_SK", '***REMOVED-STRIPE-TEST***');
+// hardcoded Stripe key removed; use env('STRIPE_SECRET') / env('STRIPE_SECRET_TEST')
 //define("F_ENVIROMENT", 'development');
 
 //require_once( APPPATH.'/libraries/REST_Controller.php');
@@ -141,7 +141,7 @@ class StripeCustomer {
         $request = $this->get();
         $user_id = $request["user_id"];
         if(!defined("STRIPE_SK_TEST")){
-            //define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+            // hardcoded Stripe key removed; use env('STRIPE_SECRET') / env('STRIPE_SECRET_TEST')
         }
         $query = $this->db->query('SELECT StripeCustomerId
 			FROM customers 
@@ -351,7 +351,7 @@ class StripeCustomer {
 	}
     //Confirma un payment intent para finalizar proceso de pago con stripe en modo de prueba.
     public function confirmPaymentTest($customer_id, $paymentMethodId, $amount, $currency = 'usd'){
-        define("STRIPE_SK_TEST", '***REMOVED-STRIPE-TEST***');
+        define("STRIPE_SK_TEST", ''  /* removed-key */);
         
         return $this->confirmPayment($customer_id, $paymentMethodId, $amount, $currency);
     }
