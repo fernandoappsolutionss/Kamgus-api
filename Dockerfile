@@ -46,11 +46,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # -----------------------------------------------------------------------------
 # Apache configuration
 # -----------------------------------------------------------------------------
-# Ensure only ONE MPM is loaded. php:8.1-apache uses mod_php which requires prefork.
-# Disable any other MPMs that may be enabled in the base image.
-RUN a2dismod mpm_event mpm_worker 2>/dev/null || true \
- && a2enmod mpm_prefork \
- && a2enmod rewrite headers
+# Force ONLY mpm_prefork (mod_php requires it). a2dismod/a2enmod can leave
+# multiple MPMs enabled in some Debian configs, causing AH00534. Manipulate
+# the symlinks directly to be 100% sure only one MPM is loaded.
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.* \
+          /etc/apache2/mods-enabled/mpm_worker.* \
+          /etc/apache2/mods-enabled/mpm_prefork.* \
+ && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
+ && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+ && a2enmod rewrite headers \
+ && echo "=== Active MPMs ===" \
+ && ls -la /etc/apache2/mods-enabled/ | grep mpm
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
