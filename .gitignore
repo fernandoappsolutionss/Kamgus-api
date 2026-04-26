@@ -1,0 +1,67 @@
+# Dependencies
+/node_modules
+/vendor
+
+# Compiled assets
+/public/hot
+/public/storage
+/public/build
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Environment & secrets
+.env
+.env.backup
+.env.local
+.env.production
+*.pem
+storage/*.key
+storage/oauth-private.key
+storage/oauth-public.key
+storage/app/firebase/*.json
+!storage/app/firebase/.gitkeep
+
+# Storage runtime files (keep dirs, ignore contents)
+storage/app/public/*
+!storage/app/public/.gitkeep
+storage/framework/cache/*
+!storage/framework/cache/.gitkeep
+storage/framework/sessions/*
+!storage/framework/sessions/.gitkeep
+storage/framework/views/*
+!storage/framework/views/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Laravel cache
+bootstrap/cache/*.php
+!bootstrap/cache/.gitkeep
+
+# Tests
+.phpunit.result.cache
+.phpunit.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+__MACOSX
+Thumbs.db
+
+# Build artifacts
+*.zip
+*.tar.gz
+error_log
+*.log
+npm-debug.log
+yarn-error.log
+
+# Local dev
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+.phpactor.json
