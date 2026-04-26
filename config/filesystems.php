@@ -60,6 +60,37 @@ return [
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+        ],
+
+        // ===================================================================
+        // Supabase Storage (S3-compatible)
+        // Reads via public URL: <SUPABASE_URL>/storage/v1/object/public/<bucket>/<path>
+        // Writes via S3 API: <SUPABASE_URL>/storage/v1/s3
+        // ===================================================================
+
+        'supabase_public' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'bucket' => env('SUPABASE_BUCKET_PUBLIC', 'kamgus-public'),
+            'endpoint' => rtrim(env('SUPABASE_URL', ''), '/') . '/storage/v1/s3',
+            'url' => rtrim(env('SUPABASE_URL', ''), '/') . '/storage/v1/object/public/' . env('SUPABASE_BUCKET_PUBLIC', 'kamgus-public'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
+        'supabase_private' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'bucket' => env('SUPABASE_BUCKET_PRIVATE', 'kamgus-private'),
+            'endpoint' => rtrim(env('SUPABASE_URL', ''), '/') . '/storage/v1/s3',
+            'use_path_style_endpoint' => true,
+            'throw' => false,
         ],
 
     ],

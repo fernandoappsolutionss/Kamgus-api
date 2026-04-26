@@ -3,11 +3,26 @@
 namespace App\Classes\Bg;
 
 //define("Y_ENVIROMENT", 'enviroment');
-define("Y_ENVIROMENT", config('app.env'));
+if (!defined('Y_ENVIROMENT')) {
+    define("Y_ENVIROMENT", config('app.env'));
+}
 final class BgFirma
 {
     const HASH = 'sha256';
-    const APIURL = Y_ENVIROMENT === 'production' ? 'https://apipagosbg.bgeneral.cloud' : 'https://api-comecom-uat.yappycloud.com';
+
+    /**
+     * Yappy API URL — overridable via YAPPY_API_URL env var.
+     * Default points to the legacy Banco General endpoint. With the new YP_-prefixed
+     * clave_secreta tokens, Yappy may require api-comecom.yappycloud.com instead —
+     * verify in comercial.yappy.com.pa portal when testing.
+     */
+    public static function apiUrl(): string
+    {
+        return env('YAPPY_API_URL', Y_ENVIROMENT === 'production'
+            ? 'https://apipagosbg.bgeneral.cloud'
+            : 'https://api-comecom-uat.yappycloud.com');
+    }
+
     const URLSITE = 'https://pagosbg.bgeneral.com';
     const DOMAIN_REGEX = '/^(https:\/\/www\.|https:\/\/)?[a-zñ0-9]+([\-\.]{1}[a-zñ0-9]+)*\.[a-z]{2,10}(:[0-9]{1,5})?(\/.*)?$/';
     const DEFAULT_ORDER_ID = 'PEDIDO WEB';
@@ -440,7 +455,7 @@ final class BgFirma
             }
 
             $curl = curl_init();
-            curl_setopt($curl, CURLOPT_URL, self::APIURL . '/validateapikeymerchand');
+            curl_setopt($curl, CURLOPT_URL, self::apiUrl() . '/validateapikeymerchand');
             curl_setopt($curl, CURLOPT_POST, 1);
             $values = base64_decode($secretKey);
             $secrete = explode('.', $values);
