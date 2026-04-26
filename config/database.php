@@ -62,14 +62,16 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
+        // Legacy MySQL connection for kamgus_proyecto (CodeIgniter era).
+        // After migration, this points to Postgres schema 'proyecto_legacy' instead.
         'mysql_old' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => "kamgus_proyecto",
-            'username' => "kamgus_user1",
-            'password' => '!OM2h2-x8fVN',
+            'host' => env('DB_OLD_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_OLD_PORT', '3306'),
+            'database' => env('DB_OLD_DATABASE', 'kamgus_proyecto'),
+            'username' => env('DB_OLD_USERNAME', 'kamgus_user1'),
+            'password' => env('DB_OLD_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
@@ -87,14 +89,31 @@ return [
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('DB_USERNAME', 'forge'),
+            'database' => env('DB_DATABASE', 'postgres'),
+            'username' => env('DB_USERNAME', 'postgres'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'schema' => 'public',
-            'sslmode' => 'prefer',
+            // Schema search_path. First schema is the default for unqualified table names.
+            // Default 'apikamgusv2,public' so Eloquent models without $table schema resolve to apikamgusv2.*
+            'schema' => array_map('trim', explode(',', env('DB_SCHEMA', 'apikamgusv2,public'))),
+            'sslmode' => env('DB_SSLMODE', 'require'),
+        ],
+
+        // Legacy Postgres connection pointing to proyecto_legacy schema (migrated from kamgus_proyecto MySQL).
+        'pgsql_legacy' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'postgres'),
+            'username' => env('DB_USERNAME', 'postgres'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'schema' => array_map('trim', explode(',', env('DB_SCHEMA_LEGACY', 'proyecto_legacy,public'))),
+            'sslmode' => env('DB_SSLMODE', 'require'),
         ],
 
         'sqlsrv' => [

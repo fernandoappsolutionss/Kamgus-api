@@ -6,7 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 //use GGInnovative\Larafirebase\Facades\Larafirebase;
-use Kutia\Larafirebase\Facades\Larafirebase;
+use GGInnovative\Larafirebase\Facades\Larafirebase;
 //use Kutia\Larafirebase\Messages\FirebaseMessage;
 
 class SendPushNotification extends Notification
