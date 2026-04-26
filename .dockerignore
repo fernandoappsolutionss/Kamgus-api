@@ -1,0 +1,61 @@
+# Keep build context small + don't ship secrets
+
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+.styleci.yml
+
+vendor/
+node_modules/
+
+storage/logs/*
+!storage/logs/.gitkeep
+storage/framework/cache/data/*
+!storage/framework/cache/.gitkeep
+storage/framework/sessions/*
+!storage/framework/sessions/.gitkeep
+storage/framework/views/*
+!storage/framework/views/.gitkeep
+storage/oauth-private.key
+storage/oauth-public.key
+storage/app/public/*
+!storage/app/public/.gitkeep
+storage/app/firebase/*
+!storage/app/firebase/.gitkeep
+
+bootstrap/cache/*.php
+!bootstrap/cache/.gitkeep
+
+# Tests / dev
+.phpunit.result.cache
+.phpunit.cache
+phpunit.xml
+tests/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+__MACOSX
+
+# Build artifacts
+*.zip
+*.tar.gz
+*.log
+error_log
+npm-debug.log
+yarn-error.log
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+
+# Don't include the Dockerfile in itself (recursive)
+README.md
