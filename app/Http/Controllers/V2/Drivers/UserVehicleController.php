@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\V2\Drivers;
 
 use App\Classes\K_HelpersV1;
-use App\Classes\SendinblueDriverClass;
+use App\Mail\PrimerVehiculoMail;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Driver;
 use App\Models\DriverVehicle;
 use App\Models\Image;
@@ -369,7 +370,9 @@ class UserVehicleController extends Controller
                 ["userable_id", "=", $driverId],
                 ["userable_type", "=", Driver::class],
             ])->first();
-            SendinblueDriverClass::getInstance()->sendTemplateEmailWithCurl($user->email, SendinblueDriverClass::PRIMER_VEHICULO_TEMPLATE, "Vehiculo registrado.", ["vehicle_url" => $vehicleUrl]);
+            $driverName = $user->driver->nombres ?? null;
+            Mail::to($user->email)
+                ->send(new PrimerVehiculoMail(vehicleUrl: $vehicleUrl, driverName: $driverName));
             return;
         }
     }

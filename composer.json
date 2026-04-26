@@ -14,7 +14,6 @@
         "ctwillie/expo-server-sdk-php": "^2.0",
         "fideloper/proxy": "^4.4",
         "fruitcake/laravel-cors": "^3.0",
-        "getbrevo/brevo-php": "^1.0",
         "gg-innovative/larafirebase": "^1.0",
         "guzzlehttp/guzzle": "^7.0.1",
         "laravel/cashier": "^13.8",

@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\V2\Customers;
 
 use App\Classes\K_HelpersV1;
-use App\Classes\SendinblueCustomerClass;
+use App\Mail\DeleteAccountConfirmationMail;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\Document;
@@ -420,10 +421,13 @@ class UserController extends Controller
             "user_id" => $user->id, 
             "expire" => Carbon::now()->addHours(2)
         ]));
-        //return url("api/v2/customer/delete/".$tempToken);
-        return SendinblueCustomerClass::getInstance()->sendTemplateEmailWithCurl($user->email, SendinblueCustomerClass::DELETE_ACCOUNT_CONFIRMATION, "Confirmar eliminación de cuenta", [
-            'link' => url("api/v2/customer/delete/".$tempToken),
-        ]);
+        $confirmUrl = url("api/v2/customer/delete/" . $tempToken);
+        Mail::to($user->email)
+            ->bcc('info@kamgus.com')
+            ->send(new DeleteAccountConfirmationMail(
+                confirmUrl: $confirmUrl,
+                name: $user->customer->nombres ?? null
+            ));
         return "Solicitud enviada. Por favor revise su bandeja de correo electronico para continuar.";
     }
     /**

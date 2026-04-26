@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Dashboard_V1;
 
 use App\Classes\K_HelpersV1;
-use App\Classes\SendinblueDriverClass;
+use App\Mail\RetiroFinalizadoMail;
 use App\Http\Controllers\Controller;
 use App\Constants\Constant;
 use App\Http\Controllers\V2\Customers\ServiceController as CustomersServiceController;
@@ -1118,16 +1118,15 @@ class ServiceController extends Controller
         */
         //dd(User::find($driverId)->email);
         $user = User::find($driverId);
-        $params = [
-            //"contact" => ["NOMBRE" => $user->userable->nombres],
-            "id" => $transaction->id,
-            "name" => trim($user->userable->nombres),
-            "amount" => "$ " . number_format(abs($transaction->amount), 2),
-            "payment_date" => $transaction->updated_at->format("Y-m-d H:i:s"),
-        ];
-        //dd($params);
-        //SendinblueDriverClass::getInstance()->sendTemplateEmailWithCurl(User::find($driverId)->email, SendinblueDriverClass::RETIRO_FINALIZADO_TEMPLATE, "Retiro finalizado", [""]);
-        SendinblueDriverClass::getInstance()->sendTemplateEmailWithCurl("info@kamgus.com", SendinblueDriverClass::RETIRO_FINALIZADO_TEMPLATE, "Retiro finalizado", $params);
+        $mail = new RetiroFinalizadoMail([
+            'driverName'    => trim($user->userable->nombres ?? ''),
+            'amount'        => abs($transaction->amount),
+            'transactionId' => (string) $transaction->id,
+            'date'          => $transaction->updated_at->format('Y-m-d H:i:s'),
+        ]);
+        // Send to admin (info@kamgus.com); also notify driver if you want by uncommenting:
+        // Mail::to($user->email)->send($mail);
+        Mail::to('info@kamgus.com')->send($mail);
         return null;
     }
 
