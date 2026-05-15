@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -e
 
+# ----------------------------------------------------------------------------
+# Firebase service account: materialize JSON from env var to storage/.
+# Accepts either:
+#   FIREBASE_SERVICE_ACCOUNT_JSON    — raw JSON (multi-line)
+#   FIREBASE_SERVICE_ACCOUNT_BASE64  — base64-encoded JSON (safer for some hosts)
+# Writes to storage/app/firebase/service-account.json (matches default in
+# config/larafirebase.php). NEVER commit the JSON file itself.
+# ----------------------------------------------------------------------------
+FIREBASE_PATH="storage/app/firebase/service-account.json"
+mkdir -p "$(dirname "$FIREBASE_PATH")"
+if [ -n "${FIREBASE_SERVICE_ACCOUNT_BASE64:-}" ]; then
+    echo "Materializing Firebase service account from FIREBASE_SERVICE_ACCOUNT_BASE64..."
+    printf '%s' "$FIREBASE_SERVICE_ACCOUNT_BASE64" | base64 -d > "$FIREBASE_PATH"
+    chmod 600 "$FIREBASE_PATH"
+elif [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then
+    echo "Materializing Firebase service account from FIREBASE_SERVICE_ACCOUNT_JSON..."
+    printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$FIREBASE_PATH"
+    chmod 600 "$FIREBASE_PATH"
+else
+    echo "WARN: No FIREBASE_SERVICE_ACCOUNT_{JSON,BASE64} set — push notifications will be disabled."
+fi
+
 # Cache framework configs/routes/views (idempotent — runs each container start).
 # Schema lives in Supabase Postgres and was loaded out-of-band; no migrations here.
 php artisan config:cache  || true
