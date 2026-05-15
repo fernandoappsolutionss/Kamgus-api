@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Classes\K_HelpersV1;
+use App\Classes\SupabaseStorage;
 use App\Constants\Constant;
 use App\Http\Resources\Admin\AdminServiceResource;
 use App\Http\Resources\Admin\AdminServiceCollection;
@@ -251,14 +252,10 @@ class ServiceController extends Controller
 
                 //evaluar si llega una imagen
                 if($articulo["imagen"]){
-                    // $name = time() . $articulo["imagen"]->getClientOriginalName();
-                    // $file = $request->file('cedula');
-                    $path = public_path() . '/article/images'; 
+                    // Custom-article images go to Supabase Storage (kamgus-public/article/images/).
                     $name = time() . $articulo["imagen"]->getClientOriginalName();
-                    $articulo["imagen"]->move($path, $name);
-                    // $file->move($path, $name);
-
-                    $custom_article->url_imagen = $name;
+                    $url  = SupabaseStorage::uploadPublic($articulo["imagen"], 'article/images', $name);
+                    $custom_article->url_imagen = $url !== false ? $url : $name;
                 }else{
                     $custom_article->url_imagen = '123';
                 }
