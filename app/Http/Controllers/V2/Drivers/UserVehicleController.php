@@ -15,6 +15,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use DB;
 
 class UserVehicleController extends Controller
@@ -381,27 +382,32 @@ class UserVehicleController extends Controller
     }
     private function uploadAFile($file, $identif, $default = null, $directory = "conductores", $customName = "")
     {
+        // Upload to Supabase Storage (kamgus-public bucket).
+        // Preserves the historical filename pattern so existing URLs stay readable,
+        // but writes to Supabase instead of Railway's ephemeral local disk.
         $name = strlen($customName) > 0 ? $customName : str_replace("." . $file->extension(), "", $file->getClientOriginalName());
         $uploadfile = $name . '_APP_' . $identif . '_photo.png';
-        $location = 'public/profiles/'.$directory;    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/profiles/$directory/$uploadfile"); //prepara ruta para obtención del archivo imagen
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            return $url_imagen_foto;
-        }
-        return $default;
+        $url = SupabaseStorage::uploadPublic($file, "profiles/{$directory}", $uploadfile);
+        return $url !== false ? $url : $default;
     }
     private function uploadFoto($files, $name, $identif)
     {
+        // Legacy entry point: receives a $_FILES-style array (used by older mobile clients
+        // that didn't wrap uploads in Symfony UploadedFile). We bridge it to UploadedFile
+        // so the rest of the pipeline goes through SupabaseStorage.
         $response = array('error' => true, 'msg' => 'Error al cargar imagen ' . $name);
-        if (isset($files)) { //Valida si es enviado el archivo
-            $imagen = $files[$name]['tmp_name'];   //Toma  ubicacion y el nombre de la imagen 
-            $uploadfile = $files[$name]['name'] . '_APP_' . $identif . '_photo.png'; //crea el nombre para el nuevo archivo
-            $location = $GLOBALS['urlFile'] . 'profiles/conductores/' . $uploadfile;    //Concatena ruta con nombre nuevo
-            $url_imagen_foto = $GLOBALS['urlActual'] . 'profiles/conductores/' . $uploadfile; //prepara ruta para obtención del archivo imagen
-            if (is_uploaded_file($imagen) && move_uploaded_file($imagen, $location)) {    //Verifica si es cargago el archivo y lo mueve al directorio destino
-                chmod($location, 0644); //Le asigna permisos de lectura
-                $response = array('error' => false, 'url' => $url_imagen_foto);
+        if (isset($files[$name]) && is_uploaded_file($files[$name]['tmp_name'])) {
+            $uploaded = new \Illuminate\Http\UploadedFile(
+                $files[$name]['tmp_name'],
+                $files[$name]['name'],
+                $files[$name]['type'] ?? null,
+                $files[$name]['error'] ?? 0,
+                true // test mode = true so the file isn't required to be a real HTTP upload after we've validated it
+            );
+            $uploadfile = $files[$name]['name'] . '_APP_' . $identif . '_photo.png';
+            $url = SupabaseStorage::uploadPublic($uploaded, 'profiles/conductores', $uploadfile);
+            if ($url !== false) {
+                $response = array('error' => false, 'url' => $url);
             } else {
                 $response = array('error' => true, 'msg' => 'Error al cargar imagen ' . $name);
             }

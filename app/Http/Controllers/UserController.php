@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Classes\K_HelpersV1;
+use App\Classes\SupabaseStorage;
 use App\Events\WelcomeEmailEvent;
 use App\Models\Company;
 use App\Models\Customer;
@@ -167,47 +168,43 @@ class UserController extends Controller
         $urlCedula = "";
         $urlLicencia = "";
         
+        // Driver documents go to Supabase Storage (kamgus-public/documentos/).
+        // Same caveat as the V2 version: cedula/license are sensitive and should move
+        // to a private bucket once the new dashboard ships.
         if($request->file('cedula')){
-            // $path = $request->file('cedula')->store('public/documentos');
             $file = $request->file('cedula');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $urlCedula = $name;
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
+            $urlCedula = $url !== false ? $url : $name;
 
             $documento = new Document();
             $documento->tipo = "CEDULA";
-            $documento->url_foto = $name;
+            $documento->url_foto = $urlCedula;
             $documento->driver_id = $driver->id;
             $documento->save();
         }
-        
-        if($request->file('pasaporte')){
-            // $request->file('pasaporte')->store('public/documentos');
 
+        if($request->file('pasaporte')){
             $file = $request->file('pasaporte');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
 
             $documento = new Document();
             $documento->tipo = "PASAPORTE";
-            $documento->url_foto = $name;
+            $documento->url_foto = $url !== false ? $url : $name;
             $documento->driver_id = $driver->id;
             $documento->save();
         }
-        
+
         if($request->file('licencia')){
-            // $path = $request->file('licencia')->store('´public/documentos');
             $file = $request->file('licencia');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $urlLicencia = $name;
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
+            $urlLicencia = $url !== false ? $url : $name;
 
             $documento = new Document();
             $documento->tipo = "LICENCIA";
-            $documento->url_foto = $name;
+            $documento->url_foto = $urlLicencia;
             $documento->driver_id = $driver->id;
             $documento->save();
         }

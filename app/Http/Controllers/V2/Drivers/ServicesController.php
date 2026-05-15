@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
@@ -1060,19 +1061,9 @@ class ServicesController extends Controller
         return response()->json($response);
     }
     function uploadAFile($file, $identif, $default = null){
+        // Upload to Supabase Storage (kamgus-public/profiles/servicios/).
         $uploadfile = date('YmdHms').'_APP_'.$identif.'_photo.png';
-        $location = 'public/profiles/servicios';    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/profiles/servicios/$uploadfile"); //prepara ruta para obtención del archivo imagen
-        $service = Service::find($identif);
-       
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            //return $url_imagen_foto;
-            //chmod($path, 0644); it's not necessary 
-            return $url_imagen_foto;           
-        }
-        return false;
-        
-
+        $url = SupabaseStorage::uploadPublic($file, 'profiles/servicios', $uploadfile);
+        return $url !== false ? $url : false;
     }
 }

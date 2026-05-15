@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Classes\SupabaseStorage;
 use App\Constants\Constant;
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Resources\Customers\ArticleCollection;
@@ -31,10 +32,13 @@ class ArticleController extends Controller
     {
         $request->validated();
 
+        // Article images go to Supabase Storage (kamgus-public/images/).
+        $path = null;
         if ($request->file('url_imagen')) {
-            
-            $path = $request->file('url_imagen')->store('images');
-
+            $path = SupabaseStorage::uploadPublic($request->file('url_imagen'), 'images');
+            if ($path === false) {
+                $path = null;
+            }
         }
 
         $data = new Article();

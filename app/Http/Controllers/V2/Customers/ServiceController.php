@@ -26,6 +26,7 @@ use App\Notifications\SendExpoPushNotification;
 use App\Notifications\SendPushNotification;
 use DateTime;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use DB;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Mail;
@@ -881,23 +882,14 @@ class ServiceController extends Controller
 	}
     
     function uploadAFile($file, $identif, $default = null){
-        $uploadfile = date('YmdHms').'_APP_'.$identif.'_photo.png';
-        $location = 'public/profiles/servicios';    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/profiles/servicios/$uploadfile"); //prepara ruta para obtención del archivo imagen
+        // Upload to Supabase Storage (kamgus-public/profiles/servicios/), capped at 4 photos per service.
         $service = Service::find($identif);
-        
         if(!empty($service->image) && $service->image->count() >= 4){
             return false;
-        }else
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            //return $url_imagen_foto;
-            //chmod($path, 0644); it's not necessary 
-            return $url_imagen_foto;           
         }
-        return false;
-        
-
+        $uploadfile = date('YmdHms').'_APP_'.$identif.'_photo.png';
+        $url = SupabaseStorage::uploadPublic($file, 'profiles/servicios', $uploadfile);
+        return $url !== false ? $url : false;
     }
     private function uploadFile($data, $isFile = false){  
 		$GLOBALS['ulrActual'] = 'http://www.api.kamgus.com/';

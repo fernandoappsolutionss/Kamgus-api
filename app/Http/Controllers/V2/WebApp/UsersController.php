@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Stripe\Transfer;
@@ -946,15 +947,11 @@ class UsersController extends Controller
     }
     private function uploadADriverFile($file, $identif, $default = null)
     {
+        // Upload to Supabase Storage (kamgus-public/profiles/conductores/).
         $name = str_replace("." . $file->extension(), "", $file->getClientOriginalName());
         $uploadfile = $name . '_APP_' . $identif . '_photo.png';
-        $location = 'public/profiles/conductores';    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/profiles/conductores/$uploadfile"); //prepara ruta para obtención del archivo imagen
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            return $url_imagen_foto;
-        }
-        return $default;
+        $url = SupabaseStorage::uploadPublic($file, 'profiles/conductores', $uploadfile);
+        return $url !== false ? $url : $default;
     }
     private function registerUserDriver($request){
 
@@ -971,47 +968,44 @@ class UsersController extends Controller
         $urlCedula = "";
         $urlLicencia = "";
         
+        // Driver documents go to Supabase Storage (kamgus-public/documentos/).
+        // NOTE: cedula/license are sensitive — once the new dashboard is in place we'll move these
+        // to kamgus-private and serve via signed URLs. For now we preserve the existing public
+        // access pattern so older clients keep working.
         if($request->file('cedula')){
-            // $path = $request->file('cedula')->store('public/documentos');
             $file = $request->file('cedula');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $urlCedula = $name;
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
+            $urlCedula = $url !== false ? $url : $name;
 
             $documento = new Document();
             $documento->tipo = "CEDULA";
-            $documento->url_foto = $name;
+            $documento->url_foto = $urlCedula;
             $documento->driver_id = $driver->id;
             $documento->save();
         }
-        
-        if($request->file('pasaporte')){
-            // $request->file('pasaporte')->store('public/documentos');
 
+        if($request->file('pasaporte')){
             $file = $request->file('pasaporte');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
 
             $documento = new Document();
             $documento->tipo = "PASAPORTE";
-            $documento->url_foto = $name;
+            $documento->url_foto = $url !== false ? $url : $name;
             $documento->driver_id = $driver->id;
             $documento->save();
         }
-        
+
         if($request->file('licencia')){
-            // $path = $request->file('licencia')->store('´public/documentos');
             $file = $request->file('licencia');
-            $path = public_path() . '/documentos'; 
             $name = time() . $file->getClientOriginalName();
-            $urlLicencia = $name;
-            $file->move($path, $name);
+            $url = SupabaseStorage::uploadPublic($file, 'documentos', $name);
+            $urlLicencia = $url !== false ? $url : $name;
 
             $documento = new Document();
             $documento->tipo = "LICENCIA";
-            $documento->url_foto = $name;
+            $documento->url_foto = $urlLicencia;
             $documento->driver_id = $driver->id;
             $documento->save();
         }

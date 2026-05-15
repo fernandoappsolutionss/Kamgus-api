@@ -13,6 +13,7 @@ use App\Notifications\NewSupportTicket;
 use Illuminate\Http\Request;
 use DB;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use Illuminate\Support\Facades\Validator;
 
 class SupportController extends Controller
@@ -20,15 +21,11 @@ class SupportController extends Controller
     const IMAGES_PATH = 'public/support/tickets';
     private function uploadAFile($file, $identif, $default = null)
     {
+        // Upload to Supabase Storage (kamgus-public/support/tickets/).
         $name = str_replace("." . $file->extension(), "", $file->getClientOriginalName());
         $uploadfile = $name . '_APP_' . $identif . '_photo.png';
-        $location = self::IMAGES_PATH;    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/support/tickets/$uploadfile"); //prepara ruta para obtención del archivo imagen
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            return $url_imagen_foto;
-        }
-        return $default;
+        $url = SupabaseStorage::uploadPublic($file, 'support/tickets', $uploadfile);
+        return $url !== false ? $url : $default;
     }
     public function index(){
         return "En desarrollo";
@@ -96,15 +93,16 @@ class SupportController extends Controller
         $url = null;
         if($request->file('cimage')){
 
-            $url = $this->uploadAFile($request->file('cimage'), 'ticket_'.$sticket->id, 'SUPPORT'); 
+            $url = $this->uploadAFile($request->file('cimage'), 'ticket_'.$sticket->id, 'SUPPORT');
             $image = new Image();
             $image->url = $url;
-            $image->is = "support"; 
+            $image->is = "support";
             $image->imageable_id = $sticket->id;
             $image->imageable_type = SupportTicket::class;
-            $image->save();    
-            $urlArray = explode("/", $url);
-            $url = storage_path("app/".self::IMAGES_PATH."/".array_pop($urlArray));
+            $image->save();
+            // Note: $url is now a Supabase public URL (file lives in object storage, not local disk).
+            // Notifications can include the URL in the email body if they want to link to the attachment;
+            // they should NOT try to attach by local path anymore.
         }
         //Notificar via email sobre el mensaje
         foreach ($admins as $key => $admin) {

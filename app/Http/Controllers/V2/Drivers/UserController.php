@@ -31,6 +31,7 @@ use App\Notifications\ForgotPasswordNotification;
 use DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use App\Classes\SupabaseStorage;
 use Laravel\Passport\Passport;
 
 class UserController extends Controller
@@ -486,15 +487,11 @@ class UserController extends Controller
     }
     private function uploadAFile($file, $identif, $default = null)
     {
+        // Upload to Supabase Storage (kamgus-public/profiles/conductores/).
         $name = str_replace("." . $file->extension(), "", $file->getClientOriginalName());
         $uploadfile = $name . '_APP_' . $identif . '_photo.png';
-        $location = 'public/profiles/conductores';    //Concatena ruta con nombre nuevo
-        $url_imagen_foto = secure_asset("storage/profiles/conductores/$uploadfile"); //prepara ruta para obtención del archivo imagen
-        if ($path = Storage::putFileAs($location, $file, $uploadfile, 'public')) {
-            # code...
-            return $url_imagen_foto;
-        }
-        return $default;
+        $url = SupabaseStorage::uploadPublic($file, 'profiles/conductores', $uploadfile);
+        return $url !== false ? $url : $default;
     }
      private function updateProfile($user, $request){
         $url_perfil_foto = 'https://via.placeholder.com/150x150';
