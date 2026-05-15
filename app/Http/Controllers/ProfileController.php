@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Classes\SupabaseStorage;
 use App\Constants\Constant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -218,54 +219,36 @@ class ProfileController extends Controller
     }
 
     function updateanyprofileimg(Request $request){
-
+        // Profile photos go to Supabase Storage (kamgus-public/profile/images/).
+        // We no longer call unlink() on the old file — Railway's disk is ephemeral
+        // and the old URL might point to Supabase anyway; orphaned objects can be
+        // garbage-collected separately if it ever becomes a concern.
         $user = Auth::user();
 
-        if($user->userable->url_foto_perfil == null){
-            //recibir imagen
-            if($request->file('image')){
-                $file = $request->file('image');
-                $path = public_path() . '/profile/images'; 
-                $name = time() . $file->getClientOriginalName();
-                $file->move($path, $name);
-            }
-
-            $user->userable->url_foto_perfil = $name;
-            $user->userable->save();
-
+        if(!$request->file('image')){
             return response()->json([
-                'msg' => Constant::UPDATE_PROFILE_IMAGE, 
-                'img' => $user->userable->url_foto_perfil
+                'msg' => 'No image provided',
+                'code' => Response::HTTP_UNPROCESSABLE_ENTITY
             ]);
-
-        }else{
-
-            $path = public_path() . '/profile/images/'. $user->userable->url_foto_perfil;
-            unlink($path);
-
-            $user->userable->url_foto_perfil = '';
-            $user->userable->save();
-
-            // recibir imagen
-            if($request->file('image')){
-                $file = $request->file('image');
-                $path = public_path() . '/profile/images'; 
-                $name = time() . $file->getClientOriginalName();
-                $file->move($path, $name);
-            }
-
-            $user->userable->url_foto_perfil = $name;
-            $user->userable->save();
-
-            return response()->json([
-                'msg' => Constant::UPDATE_PROFILE_IMAGE, 
-                'img' => $user->userable->url_foto_perfil
-            ]);
-
         }
-        
-        
 
+        $file = $request->file('image');
+        $name = time() . $file->getClientOriginalName();
+        $url  = SupabaseStorage::uploadPublic($file, 'profile/images', $name);
+        if ($url === false) {
+            return response()->json([
+                'msg' => 'Upload failed',
+                'code' => Response::HTTP_INTERNAL_SERVER_ERROR
+            ]);
+        }
+
+        $user->userable->url_foto_perfil = $url;
+        $user->userable->save();
+
+        return response()->json([
+            'msg' => Constant::UPDATE_PROFILE_IMAGE,
+            'img' => $user->userable->url_foto_perfil
+        ]);
     }
 
 }
