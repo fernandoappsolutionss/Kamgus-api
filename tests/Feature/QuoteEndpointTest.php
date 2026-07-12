@@ -39,7 +39,7 @@ class QuoteEndpointTest extends TestCase
             'id_tipo_camion' => 1,
             'duration_seconds' => 1800,
             'distance_meters' => 12000,
-            'precio_cliente' => 55,
+            'precio_cliente' => 50,
         ]);
 
         $response->assertOk()
