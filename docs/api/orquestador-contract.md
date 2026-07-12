@@ -11,7 +11,7 @@ Cotiza el `precio_sugerido` para el orquestador sin crear servicios ni tocar din
   "id_tipo_camion": 1,
   "duration_seconds": 1800,
   "distance_meters": 12000,
-  "precio_cliente": 55,
+  "precio_cliente": 50,
   "origin": { "lat": 9.0, "lng": -79.5 },
   "destination": { "lat": 9.1, "lng": -79.6 }
 }
@@ -38,7 +38,7 @@ Cotiza el `precio_sugerido` para el orquestador sin crear servicios ni tocar din
     "pk": 0.5,
     "precio_sugerido": 63.3,
     "precio_listado_spa": 71.2,
-    "precio_cliente": 55,
+    "precio_cliente": 50,
     "precio_cliente_banda": "yellow",
     "bandas_precio": {
       "red": "<= 0.7 * precio_sugerido",
@@ -121,7 +121,7 @@ Cuando T3 cree o simule un servicio contra Laravel, el DTO canonico debe conserv
   "id_tipo_camion": 1,
   "tipo_translado": "vehiculo",
   "estado": "ACTIVO",
-  "valor": 55,
+  "valor": 50,
   "precio_sugerido": 63.3,
   "pago": "PENDIENTE",
   "descripcion": "Carga liviana",

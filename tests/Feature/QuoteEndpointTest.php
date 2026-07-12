@@ -54,6 +54,32 @@ class QuoteEndpointTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function testItRejectsInactiveTypeTransportWithNotFound()
+    {
+        // id=5 (Moto) esta sembrado con estado=0
+        $response = $this->postJson('/api/v2/quote', [
+            'id_tipo_camion' => 5,
+            'duration_seconds' => 1200,
+            'distance_meters' => 8000,
+        ]);
+
+        $response->assertStatus(404);
+    }
+
+    public function testItRejectsActiveTypeWithoutLegacyStoreMappingWith422()
+    {
+        // id=5 activo: types_transports lo tiene pero el store de invitados no lo mapea
+        DB::table('types_transports')->where('id', 5)->update(['estado' => 1]);
+
+        $response = $this->postJson('/api/v2/quote', [
+            'id_tipo_camion' => 5,
+            'duration_seconds' => 1200,
+            'distance_meters' => 8000,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
     public function testItUsesDirectionsWhenDurationIsMissingAndGoogleKeyIsConfigured()
     {
         config(['services.google_maps.server_key' => 'test-key']);

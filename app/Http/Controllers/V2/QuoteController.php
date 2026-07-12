@@ -12,6 +12,13 @@ use Throwable;
 
 class QuoteController extends Controller
 {
+    /**
+     * Ids con mapeo en el store de invitados (Inviteds/ServiceController::$transportType).
+     * "5" (Moto en types_transports) NO tiene mapeo: crear un servicio con ese id
+     * dejaría tipo_transporte NULL — la cotización lo rechaza (salvaguarda).
+     */
+    private const LEGACY_STORE_MAPPED_IDS = ['1', '2', '3', '4', '6', '7', '8'];
+
     private $calculator;
 
     public function __construct(PriceCalculator $calculator)
@@ -37,12 +44,21 @@ class QuoteController extends Controller
             'destination_lng' => 'nullable|numeric|between:-180,180',
         ]);
 
-        $typeTransport = TypeTransport::find($request->input('id_tipo_camion'));
+        $typeTransport = TypeTransport::where('id', $request->input('id_tipo_camion'))
+            ->where('estado', TypeTransport::ACTIVE_STATUS)
+            ->first();
         if (!$typeTransport) {
             return response()->json([
                 'error' => true,
-                'msg' => 'Tipo de transporte no encontrado',
+                'msg' => 'Tipo de transporte no encontrado o inactivo',
             ], self::HTTP_NOT_FOUND);
+        }
+
+        if (!in_array((string) $typeTransport->id, self::LEGACY_STORE_MAPPED_IDS, true)) {
+            return response()->json([
+                'error' => true,
+                'msg' => 'Tipo de transporte sin mapeo en el flujo de creacion de servicios (ids soportados: 1,2,3,4,6,7,8)',
+            ], self::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $metrics = $this->resolveRouteMetrics($request);
