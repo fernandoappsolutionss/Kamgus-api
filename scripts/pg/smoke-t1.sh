@@ -29,30 +29,41 @@ done
 "${psql_cmd[@]}" <<'SQL'
 SET search_path = apikamgusv2, public;
 
-SELECT CASE
-    WHEN sha2('abc', 256) = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
-    THEN 1 ELSE 1 / 0
-END AS sha2_text_ok;
+-- Asserts en DO/RAISE: el idiom CASE...ELSE 1/0 revienta en plan-time con
+-- funciones no-IMMUTABLE (el planner constant-foldea el 1/0 sin podar la rama).
+DO $assert$
+DECLARE
+    seq_services bigint;
+    seq_legacy bigint;
+BEGIN
+    IF sha2('abc', 256) <> 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' THEN
+        RAISE EXCEPTION 'ASSERT sha2_text_ok FALLO';
+    END IF;
+    RAISE NOTICE 'ASSERT OK: sha2_text';
 
-SELECT CASE
-    WHEN sha2(42::bigint, 256) = sha2('42', 256)
-    THEN 1 ELSE 1 / 0
-END AS sha2_bigint_ok;
+    IF sha2(42::bigint, 256) <> sha2('42', 256) THEN
+        RAISE EXCEPTION 'ASSERT sha2_bigint_ok FALLO';
+    END IF;
+    RAISE NOTICE 'ASSERT OK: sha2_bigint';
 
-SELECT CASE
-    WHEN unix_timestamp() > 0
-    THEN 1 ELSE 1 / 0
-END AS unix_timestamp_ok;
+    IF unix_timestamp() <= 0 THEN
+        RAISE EXCEPTION 'ASSERT unix_timestamp_ok FALLO';
+    END IF;
+    RAISE NOTICE 'ASSERT OK: unix_timestamp';
 
-SELECT CASE
-    WHEN nextval('apikamgusv2.services_id_seq'::regclass) = 44
-    THEN 1 ELSE 1 / 0
-END AS apikamgusv2_services_sequence_ok;
+    seq_services := nextval('apikamgusv2.services_id_seq'::regclass);
+    IF seq_services <> 44 THEN
+        RAISE EXCEPTION 'ASSERT services_sequence FALLO: nextval=% esperado 44', seq_services;
+    END IF;
+    RAISE NOTICE 'ASSERT OK: apikamgusv2_services_sequence';
 
-SELECT CASE
-    WHEN nextval('proyecto_legacy.servicios_idservicios_seq'::regclass) = 78
-    THEN 1 ELSE 1 / 0
-END AS proyecto_legacy_servicios_sequence_ok;
+    seq_legacy := nextval('proyecto_legacy.servicios_idservicios_seq'::regclass);
+    IF seq_legacy <> 78 THEN
+        RAISE EXCEPTION 'ASSERT legacy_sequence FALLO: nextval=% esperado 78', seq_legacy;
+    END IF;
+    RAISE NOTICE 'ASSERT OK: proyecto_legacy_servicios_sequence';
+END
+$assert$;
 
 DO $$
 BEGIN
