@@ -90,10 +90,12 @@ class ServiceController extends Controller
             $telefono = "+".Country::where("nicename", "Panama")->first()->phonecode."".$telefono;//+507xxxxxxxx
         }
 		if($traslado == "articulo"){
-			$traslado = 'Simple';
+			$traslado = 'SIMPLE';
 			$assistant = 1;
 		}else if ($traslado == "vehiculo"){
-			$traslado = 'Mudanza';		
+			$traslado = 'MUDANZA';
+		}else{
+            $traslado = strtoupper($traslado);
 		}
 		if($request->tipo_translado != "articulo" && empty($request->description)){
 			$response = array('error' => true, 'msg' => 'La descripción es obligatoria' );
@@ -109,7 +111,7 @@ class ServiceController extends Controller
         $rules = [
             
             //'telefono' => 'unique:customers',
-            'valor' => 'required|numeric|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'punto_inicial' => 'required|max:255',
             'punto_final' => 'required|max:255',
             'coordenas' => 'required|max:255',
@@ -126,7 +128,7 @@ class ServiceController extends Controller
             //'customerId' => 'required|max:255',
             'articulos' => 'nullable|max:255',
             'ExpirationDate' => 'nullable|max:255',
-            'precio_sugerido' => 'required|max:255',
+            'precio_sugerido' => 'required|numeric|gt:0|max:255',
             'description' => 'required_if:tipo_translado,Mudanza|max:255',
             'assistant' => 'nullable|max:255',
             'image_description.*' => 'nullable|image|max:50000',
@@ -254,7 +256,7 @@ class ServiceController extends Controller
         $route->save();
 
         //Registrar articulos del servicio
-        if(!empty($request->articulos) && $request->tipo_translado == "Simple"){
+        if(!empty($request->articulos) && strtoupper($request->tipo_translado) == "SIMPLE"){
             //if($articles = json_decode('[{"idarticulo":" \r\n 2 ","cantidad":"1","nombre":"Colch\u00f3n Double \/ full o tama\u00f1o doble \/ matrimonio","m3":"3.5","m2":"1","peso":"80","tiempo":"10"}]')){
             if($articles = json_decode($request->articulos)){
                 foreach ($articles as $key => $article) {
@@ -299,7 +301,9 @@ class ServiceController extends Controller
         ->get(["U.email"]);
         if(count((array)$userEmails)){
             //NotifyServiceStatusByEmail::dispatch($userEmails->pluck("email"), $service->id, "Nuevo servicio", "Hay un nuevo servicio disponible");
-            NotifyServiceStatusByEmail::dispatchAfterResponse($userEmails->pluck("email"), $service->id, "Nuevo servicio", "Hay un nuevo servicio disponible");
+            if(!externalNotificationsDisabled()){
+                NotifyServiceStatusByEmail::dispatchAfterResponse($userEmails->pluck("email"), $service->id, "Nuevo servicio", "Hay un nuevo servicio disponible");
+            }
         }
         $usersTokens = $this->getTokensFromDrivers($drivers);
         //foreach ($drivers as $key => $driver) {
@@ -328,7 +332,9 @@ class ServiceController extends Controller
         //foreach ($usersTokens as $tdriver) {
             //notifyToDriver($tdriver->token, "Nuevo servicio", "Hay un nuevo servicio disponible");            
         //}
-        NotifyServiceStatus::dispatchAfterResponse($usersTokens->pluck("token"), $service->id, "Nuevo servicio", "Hay un nuevo servicio disponible");
+        if(!externalNotificationsDisabled()){
+            NotifyServiceStatus::dispatchAfterResponse($usersTokens->pluck("token"), $service->id, "Nuevo servicio", "Hay un nuevo servicio disponible");
+        }
         if($route->save()){
             $response = array(
                 'error' => false, 
@@ -459,24 +465,8 @@ class ServiceController extends Controller
                     return response()->json( $response , self::HTTP_NO_CONTENT );	
                 }
                 break;
-            case 'payment_status': //Testing
-                return;
-                return StripeCustomClass::getInstance()->getCheckoutSession(Transaction::where("service_id", request()->serviceId)->first()->transaction_id);
-            case 'test_refund': //Testing
-                //return;
-                $t = Transaction::where("transaction_id", request()->tid)->first();
-                $pIntent =  StripeCustomClass::getInstance()->getCheckoutSession($t->transaction_id)["payment_intent"];
-                $response =  StripeCustomClass::getInstance()->refundPaymentIntent($pIntent, $t->total * 100);
-                $t->status = $response["status"] == "succeeded" ? "canceled" : $response["status"];
-                $t->transaction_id = $response["id"];
-                $t->save();
-                return $response;
-                
-                # code...
-                break;
             default:
-                # code...
-                break;
+                abort(self::HTTP_NOT_FOUND);
         }
     }
 
@@ -533,7 +523,7 @@ class ServiceController extends Controller
                 }
                 $service->precio_real = $driverService->suggested_price;
                 if($service->estado == "PENDIENTE"){
-                    $service->estado = "Activo";
+                    $service->estado = "ACTIVO";
                     $service->driver_id = $driverId;
                     $service->save();
                 } else if($service->estado == "RESERVA"){
@@ -546,7 +536,7 @@ class ServiceController extends Controller
                 $driverService->driver_id = $driverId;
                 $driverService->startTime = date("Y-m-d H:i:s");
                 $driverService->endTime = Carbon::now()->addSeconds(Carbon::parse($driverService->endTime)->diffInSeconds(Carbon::parse($driverService->startTime)))->format("Y-m-d H:i:s");
-                $driverService->status = $service->estado == "AGENDADO" ? $service->estado : 'En Curso';
+                $driverService->status = $service->estado == "AGENDADO" ? "Agendado" : 'En curso';
                 $driverService->confirmed = 'SI';
                 $driverService->ispaid = 'Pendiente';
                 $driverService->commission = '';
@@ -654,7 +644,7 @@ class ServiceController extends Controller
         $driverTimeT = "";
         $validator = Validator::make($request->all(), [
             'servicio_id'    => 'required|exists:services,id',
-            'precio' => 'required',
+            'precio' => 'required|numeric|gt:0',
             'user_lat' => Rule::requiredIf(Service::find($request->servicio_id)->estado != "RESERVA"),
             'user_lng' => Rule::requiredIf(Service::find($request->servicio_id)->estado != "RESERVA"),
         ]);
@@ -689,7 +679,7 @@ class ServiceController extends Controller
         $driverService->endTime = $dInterval->format("Y-m-d H:i:s");
         $driverService->driver_id = $user->userable_id;
         $driverService->status = $estado;
-        $driverService->confirmed = "No";
+        $driverService->confirmed = "NO";
         $driverService->reservation_date = date("Y-m-d H:i:s");
         $driverService->observation = "";
         $driverService->suggested_price = $precio;
@@ -698,7 +688,7 @@ class ServiceController extends Controller
         $driverService->save();
 
         //Verificar que el servicio siga disponible para aceptar ofertas
-        $serviceAvailable = Service::where("id", $servicioId)->whereIn("estado", ["Pendiente", "Reserva"])->count();
+        $serviceAvailable = Service::where("id", $servicioId)->whereIn("estado", ["PENDIENTE", "RESERVA"])->count();
         if ($serviceAvailable > 0) {
             $response = array('error' => false, 'msg' => 'Su precio fue registrado para el servicio' );
 
@@ -794,7 +784,7 @@ class ServiceController extends Controller
 			"u.id as codigounico",
 			//"SHA2(u.id, 256) as registro",
 			//"if(second(tiempo) > 30, minute(tiempo) + 1, minute(tiempo)) as timeOfArrival",
-			DB::raw("UNIX_TIMESTAMP(TIMEDIFF(DS.startTime, DS.endTime)) * 1000 as timeOfArrival"),
+			DB::raw("EXTRACT(EPOCH FROM (now() + (DS.endTime::timestamp - DS.startTime::timestamp))) * 1000 as timeOfArrival"),
 			"DS.suggested_price as price",
 			"DS.service_id as idservicios",
 			"DS.created_at as created_at"
@@ -838,7 +828,7 @@ class ServiceController extends Controller
     private function cancelService($request, $userId){
 		
         $servicioId = $request->servicio_id;
-        $estado = "Cancelado";
+        $estado = "CANCELADO";
         $updated = Service::where("id", $servicioId)->update([
             "estado" => $estado,
         ]);

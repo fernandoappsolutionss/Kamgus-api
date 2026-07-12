@@ -229,7 +229,7 @@ final class K_MigrateDBV1ToV2Class
                     $driverSelected = DB::connection("mysql_old")
                     ->table("conductor_servicios")->where([
                         ["servicios_id", "=", $service->idservicios],
-                        ["estado", "=", "terminado"],
+	                        ["estado", "=", "Terminado"],
                     ])->first();
                     if(empty($customerPrice->usuario_id)){
                         //DB::rollBack();
@@ -255,13 +255,13 @@ final class K_MigrateDBV1ToV2Class
                         "kilometraje" => $service->kms,
                         "fecha_reserva" => $service->fecha_reserva == "0000-00-00 00:00:00" ? $service->creado: $service->fecha_reserva,
                         "tipo_transporte" => $ttype,
-                        "estado" => $service->estado,
-                        "tipo_servicio" => $service->tipo_translado,
+                        "estado" => $this->normalizeServiceStatus($service->estado),
+                        "tipo_servicio" => $this->normalizeServiceType($service->tipo_translado),
                         "precio_real" => floatval($service->valor),
                         "precio_sugerido" => floatval(empty($customerPrice) ? $service->valor : $customerPrice->precio),
                         "tipo_pago" => $this->paymentType[$service->tipo_pago],
                         "descripcion" => $service->description,
-                        "pago" => $service->ispaid,
+                        "pago" => $this->normalizeServicePayment($service->ispaid),
                         "assistant" => empty($service->assistant) ? 0 : $service->assistant,
                         "customer_id" => empty($userS) || $userS->userable_type == "App\\Models\\Company" || $userS->userable_type == "App\\Models\\Driver" ? null : $userS->userable_id,
                         "user_id" => $this->getUser(empty($customerPrice) ? $service->usuarios_id : $customerPrice->usuario_id),
@@ -419,7 +419,7 @@ final class K_MigrateDBV1ToV2Class
                                     ["servicio_id", "=", $service->idservicios],
                                     //["usuario_id", "=", $cs->conductores_id],
                                     ["by_driver", "=", 1],
-                                ])->select(["precio_sugerido.*", DB::raw("ADDTIME(precio_sugerido.created_at, precio_sugerido.tiempo) as endTime")])->get();
+                                ])->select(["precio_sugerido.*", DB::raw("(precio_sugerido.created_at::timestamp + precio_sugerido.tiempo::interval) as endTime")])->get();
                         foreach ($driverPrices as $key => $dprice) {
                             $ds = DriverService::firstOrCreate(
                                 ['service_id' => $service->idservicios, 'driver_id' => $dprice->usuario_id],
@@ -432,7 +432,7 @@ final class K_MigrateDBV1ToV2Class
                                     "reservation_date" => $dprice->created_at,
                                     "observation" => "",
                                     "suggested_price" => $dprice->precio,
-                                    "ispaid" => "pendiente",
+                                    "ispaid" => "Pendiente",
                                     "commission" => "",
                                 ]
                             );
@@ -457,12 +457,12 @@ final class K_MigrateDBV1ToV2Class
                                 "startTime" => $cs->startTime,
                                 "endTime" => $cs->endTime,
                                 "driver_id" => $auxDId,
-                                "status" => $cs->estado,
-                                "confirmed" => $cs->confirmado,
+                                "status" => $this->normalizeDriverServiceStatus($cs->estado),
+                                "confirmed" => $this->normalizeConfirmed($cs->confirmado),
                                 "reservation_date" => $cs->fecha_reserva,
                                 "observation" => $cs->observacion,
                                 "suggested_price" => empty($driverPrice) ? $service->valor : $driverPrice->precio,
-                                "ispaid" => empty($cs->ispagado) ? "pendiente" : $cs->ispagado,
+                                "ispaid" => $this->normalizeIsPaid($cs->ispagado),
                                 "commission" => $cs->comision,
                             ]);
                         }
@@ -1158,12 +1158,12 @@ final class K_MigrateDBV1ToV2Class
                     "driver_id" => $service->driver_id,
                     "endTime" => $service->created_at,
                     "startTime" => $service->created_at,
-                    "status" => $service->estado,
+                    "status" => $this->normalizeDriverServiceStatus($service->estado),
                     "confirmed" => "SI",
                     "reservation_date" => $service->fecha_reserva,
                     "observation" => "",
                     "suggested_price" => $service->precio_sugerido,
-                    "ispaid" => "pendiente",
+                    "ispaid" => "Pendiente",
                     "commission" => "",
                 ]
             );
@@ -1338,12 +1338,12 @@ final class K_MigrateDBV1ToV2Class
                                 "startTime" => $cs->startTime != '0000-00-00 00:00:00' ? $cs->startTime : $service->creado,
                                 "endTime" => $cs->endTime != '0000-00-00 00:00:00' ? $cs->endTime : $service->creado,
                                 "driver_id" => $auxDId,
-                                "status" => $cs->estado,
-                                "confirmed" => empty($cs->confirmado) ? "no" : $cs->confirmado,
+                                "status" => $this->normalizeDriverServiceStatus($cs->estado),
+                                "confirmed" => $this->normalizeConfirmed($cs->confirmado),
                                 "reservation_date" => empty($cs->fecha_reserva) ? ($service->fecha_reserva != '0000-00-00 00:00:00' ? $service->fecha_reserva : $service->creado) : ($cs->fecha_reserva != '0000-00-00 00:00:00' ? $cs->fecha_reserva : $service->creado),
                                 "observation" => empty($cs->observacion) ? "" : $cs->observacion,
                                 "suggested_price" => empty($driverPrice) ? $service->valor : $driverPrice->precio,
-                                "ispaid" => empty($cs->ispagado) ? "pendiente" : $cs->ispagado,
+                                "ispaid" => $this->normalizeIsPaid($cs->ispagado),
                                 "commission" => empty($cs->comision) ? "" : $cs->comision,
                             ]);
                     }
@@ -1366,7 +1366,7 @@ final class K_MigrateDBV1ToV2Class
             $isPaid = DB::connection("mysql_old")
                                 ->table("servicios")->where("idservicios", $service->id)->first();
                                 if(!empty($isPaid)){
-                                    Service::where("id", $service->id)->update(["pago" => $isPaid->ispagado]);                                    
+	                                    Service::where("id", $service->id)->update(["pago" => $this->normalizeServicePayment($isPaid->ispagado)]);                                    
                                 }else{
                                     echo $service->id." ".$service->estado."<br>";
                                 }
@@ -1521,6 +1521,82 @@ final class K_MigrateDBV1ToV2Class
             ->table("usuarios")->where("idusuarios", $userId)->first();
             return $oldUser;
         //}
+    }
+    private function normalizeServiceStatus($status)
+    {
+        $map = [
+            'Activo' => 'ACTIVO',
+            'Agendado' => 'AGENDADO',
+            'Inactivo' => 'INACTIVO',
+            'Pendiente' => 'PENDIENTE',
+            'Cancelado' => 'CANCELADO',
+            'Anulado' => 'ANULADO',
+            'Terminado' => 'TERMINADO',
+            'Reserva' => 'RESERVA',
+            'Programar' => 'PROGRAMAR',
+            'Repetir' => 'REPETIR',
+        ];
+
+        return $map[$status] ?? strtoupper((string) $status);
+    }
+    private function normalizeServiceType($type)
+    {
+        $map = [
+            'Simple' => 'SIMPLE',
+            'Mudanza' => 'MUDANZA',
+        ];
+
+        return $map[$type] ?? strtoupper((string) $type);
+    }
+    private function normalizeDriverServiceStatus($status)
+    {
+        $map = [
+            'En Curso' => 'En curso',
+            'En curso' => 'En curso',
+            'Pendiente' => 'Pendiente',
+            'Terminado' => 'Terminado',
+            'Agendado' => 'Agendado',
+            'Rechazado' => 'Rechazado',
+        ];
+
+        return $map[$status] ?? $status;
+    }
+    private function normalizeConfirmed($confirmed)
+    {
+        return strtoupper((string) ($confirmed ?: 'NO')) === 'SI' ? 'SI' : 'NO';
+    }
+    private function normalizeIsPaid($isPaid)
+    {
+        $map = [
+            'pendiente' => 'Pendiente',
+            'Pendiente' => 'Pendiente',
+            'pagado' => 'Pagado',
+            'Pagado' => 'Pagado',
+            'omitido' => 'Omitido',
+            'Omitido' => 'Omitido',
+            'Pagado Kamgus' => 'Pagado Kamgus',
+        ];
+
+        return $map[$isPaid] ?? 'Pendiente';
+    }
+    private function normalizeServicePayment($payment)
+    {
+        $map = [
+            'pendiente' => 'PENDIENTE',
+            'Pendiente' => 'PENDIENTE',
+            'PENDIENTE' => 'PENDIENTE',
+            'pagado' => 'PAGADO',
+            'Pagado' => 'PAGADO',
+            'PAGADO' => 'PAGADO',
+            'anulado' => 'ANULADO',
+            'Anulado' => 'ANULADO',
+            'ANULADO' => 'ANULADO',
+            'transferido' => 'TRANSFERIDO',
+            'Transferido' => 'TRANSFERIDO',
+            'TRANSFERIDO' => 'TRANSFERIDO',
+        ];
+
+        return $map[$payment] ?? strtoupper((string) $payment);
     }
     //Busca los registros de imagenes de una orden especificada y los copia en la base de datos del sistema.
     private function registerOrUpdateServiceImages($serviceId){

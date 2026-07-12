@@ -36,6 +36,10 @@ class NotifyServiceStatus implements ShouldQueue
      */
     public function handle()
     {
+        if(externalNotificationsDisabled()){
+            return;
+        }
+
         //
         foreach ($this->tokens as $token) {
             notifyToDriver($token, $this->title, $this->description);

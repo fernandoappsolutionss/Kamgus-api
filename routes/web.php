@@ -8,7 +8,6 @@ use App\Mail\NewCompany;
 use App\Mail\StatusService;
 use App\Mail\HomeReport;
 use App\Mail\RequestTransaction;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -80,19 +79,4 @@ Route::get('/new/driver/transaction/email', function(){
 
     return new RequestTransaction("1.00", "User name", "transaction ID");
 
-});
-//Ruta usada para testear los comandos personalizados
-Route::get('/test_command', function () {
-    return Artisan::call('refresh:old_services');
-    //return Artisan::call('schedule:run');
-
-});
-//Ruta usada para limpiar la cache del proyecto
-Route::get('/generate_link', function () {
-    //Artisan::call('storage:link');
-
-    Artisan::call('config:cache');//Borra la cache del archivo config
-    Artisan::call('config:clear');//Borra la cache del archivo config
-    Artisan::call('route:clear');//Borra la cache del relacionada a las rutas
-    Artisan::call('cache:clear');//Borra la cache de los registros de datos
 });

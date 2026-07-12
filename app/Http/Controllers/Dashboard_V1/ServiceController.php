@@ -200,7 +200,7 @@ class ServiceController extends Controller
                 AND DS.ispaid IN ('Pendiente')
                 AND DS.status IN ('Terminado')
                 AND s.tipo_pago = 'Efectivo'
-                AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                 group by DS.driver_id
                 LIMIT 1
                 ");
@@ -222,7 +222,7 @@ class ServiceController extends Controller
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Terminado')
                                     AND s.tipo_pago = 'Efectivo'
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1
                                 ) AS totalSemanalEfectivo,
@@ -234,7 +234,7 @@ class ServiceController extends Controller
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Terminado')
                                     AND (s.tipo_pago = 'Tarjeta Crédito' OR s.tipo_pago = 'Yappy' OR s.tipo_pago = 'pago_cash' OR s.tipo_pago = 'Transferencia')
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1
                                 ) AS totalSemanalCredito,
@@ -245,7 +245,7 @@ class ServiceController extends Controller
                                     WHERE DS.driver_id = :idconductor3
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Rechazado')
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1 
                                 ) AS totalRechazadoSemanal,
@@ -257,7 +257,7 @@ class ServiceController extends Controller
                             JOIN drivers AS u ON DS.driver_id = u.id
                             WHERE DS.driver_id = :idconductor4
                             AND DS.ispaid IN ('Pendiente')
-                            AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                            AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                             group by s.id
                             ORDER BY endTime DESC", [
                                 "idconductor1" => 15679, 
@@ -335,7 +335,7 @@ class ServiceController extends Controller
                 $driverService->endTime = date("Y-m-d H:i:s");
                 $driverService->driver_id = $driverUser->userable_id;
                 $driverService->status = $estado;
-                $driverService->confirmed = "No";
+                $driverService->confirmed = "NO";
                 $driverService->reservation_date = date("Y-m-d H:i:s");
                 $driverService->observation = "";
                 $driverService->suggested_price = $service->precio_real;
@@ -405,7 +405,8 @@ class ServiceController extends Controller
     {
 
         $rules = [
-            'service_id' => 'required'
+            'service_id' => 'required',
+            'value' => 'required|numeric|gt:0',
         ];
 
         $this->validate($request, $rules);
@@ -528,14 +529,14 @@ class ServiceController extends Controller
                 K_HelpersV1::getInstance()->updateDriverServicePaymentByIds($conductorId, $serviceIds);
             } else {
                 $ds = DriverService::where("driver_id", User::find($conductorId)->userable_id)
-                    ->whereRaw("WEEK(endTime) < (WEEK(CURRENT_DATE()) - 1)")
+                    ->whereRaw("endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'")
                     ->whereIn("ispaid", ['Pendiente']);
                 $ds->update(["ispaid" => 'Pagado']);
                 K_HelpersV1::getInstance()->updateDriverServicePayment($conductorId);
             }
         } else if ($tabActive == 'semanal') {
             $ds = DriverService::where("driver_id", User::find($conductorId)->userable_id)
-                ->whereRaw("WEEK(endTime) BETWEEN (WEEK(CURRENT_DATE()) - 1) AND WEEK(CURRENT_DATE())")
+                ->whereRaw("endTime >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week' AND endTime < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '1 week'")
                 ->whereIn("ispaid", ['Pendiente']);
             $ds->update(["ispaid" => 'Pagado']);
             K_HelpersV1::getInstance()->updateDriverServicePayment($conductorId, 'semanal');
@@ -664,7 +665,7 @@ class ServiceController extends Controller
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Terminado')
                                     AND s.tipo_pago = 'Efectivo'
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1
                                 ) AS totalSemanalEfectivo,
@@ -676,7 +677,7 @@ class ServiceController extends Controller
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Terminado')
                                     AND (s.tipo_pago = 'Tarjeta Crédito' OR s.tipo_pago = 'Yappy' OR s.tipo_pago = 'pago_cash' OR s.tipo_pago = 'Transferencia')
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1
                                 ) AS totalSemanalCredito,
@@ -687,7 +688,7 @@ class ServiceController extends Controller
                                     WHERE DS.driver_id = :idconductor3
                                     AND DS.ispaid IN ('Pendiente')
                                     AND DS.status IN ('Rechazado')
-                                    AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                                    AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                                     group by DS.driver_id
                                     LIMIT 1 
                                 ) AS totalRechazadoSemanal,
@@ -699,7 +700,7 @@ class ServiceController extends Controller
                             JOIN drivers AS u ON DS.driver_id = u.id
                             WHERE DS.driver_id = :idconductor4
                             AND DS.ispaid IN ('Pendiente')
-                            AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+                            AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
                             group by s.id
                             ORDER BY endTime DESC", [
                                 "idconductor1" => intval($driver->userable_id), 
@@ -978,7 +979,7 @@ class ServiceController extends Controller
             AND DS.ispaid IN ('Pendiente')
             AND DS.status IN ('Terminado')
             AND s.tipo_pago = 'Efectivo'
-            AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+            AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
             group by DS.driver_id
             LIMIT 1
         ) AS totalSemanalEfectivo,
@@ -990,7 +991,7 @@ class ServiceController extends Controller
             AND DS.ispaid IN ('Pendiente')
             AND DS.status IN ('Terminado')
             AND (s.tipo_pago = 'Tarjeta Crédito' OR s.tipo_pago = 'Yappy' OR s.tipo_pago = 'pago_cash' OR s.tipo_pago = 'Transferencia')
-            AND WEEK(DS.endTime) < (WEEK(CURRENT_DATE()) - 1)
+            AND DS.endTime < DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
             group by DS.driver_id
             LIMIT 1
         ) AS totalSemanalCredito";

@@ -109,8 +109,7 @@ class PaymentController extends Controller
         $this->validate($request, $rules);
 
         
-        // hardcoded Stripe pk removed; use env('STRIPE_KEY') if needed
-        \Stripe\Stripe::setApiKey(StripeCustomClass::getInstance()->getPublicKey());
+        \Stripe\Stripe::setApiKey(StripeCustomClass::getInstance()->getSecretKey());
 
         try {
             $card = \Stripe\PaymentMethod::create([

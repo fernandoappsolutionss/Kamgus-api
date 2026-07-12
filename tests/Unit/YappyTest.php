@@ -6,6 +6,9 @@ use App\Classes\YappyV2\YappyInterface;
 use App\Classes\YappyV2\YappyInvitedClient;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group external
+ */
 class YappyTest extends TestCase
 {
     /**

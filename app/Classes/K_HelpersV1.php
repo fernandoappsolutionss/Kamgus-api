@@ -212,6 +212,9 @@ class K_HelpersV1
     }
 
     public function confirmDriver($data, $driverId){
+        if(!self::ENABLE){
+            return false;
+        }
         $servicioId = $data["servicio_id"];
 			//$usuarioId = $data["usuario_id"];
         //$driverId = $data["driver_id"];
@@ -423,6 +426,9 @@ class K_HelpersV1
 
     //--------------- Begin Driver methods ---------------
     public function getAllReservedServices($userId){
+        if(!self::ENABLE){
+            return false;
+        }
         $connection = DB::connection("mysql_old");
         $query = $connection->select('SELECT s.*, u.*, tipo_camion.nombre_camion FROM servicios s 
 		left JOIN tipo_camion on tipo_camion.id_tipo_camion = s.id_tipo_camion
@@ -1099,7 +1105,7 @@ class K_HelpersV1
         }
         $connection = DB::connection("mysql_old");
         $config = $connection->select('SELECT configuracion.comision, balance_minimo from (
-			select max(if(idconfiguracion=1, comision, 0)) as comision, max(if(idconfiguracion=4, comision, 0)) as balance_minimo
+			select max(CASE WHEN idconfiguracion=1 THEN comision ELSE 0 END) as comision, max(CASE WHEN idconfiguracion=4 THEN comision ELSE 0 END) as balance_minimo
 			from configuracion ) as configuracion');
 		$comision = 0;
 		//$minimunBalance = 0;
@@ -1118,13 +1124,12 @@ class K_HelpersV1
 		*/
 		//$connection->select("select sum(valor) balance from balances_conductores group by idusuarios");
 		$query = $connection->table('balances_conductores')
-            ->selectRaw('if(operation = "1", valor, -1 * valor) as balance')->where([
+            ->selectRaw("CASE WHEN operation = '1' THEN valor ELSE -1 * valor END as balance")->where([
                 ["idusuarios","=", $userId],
                 ["response","=", "succeeded"],
                 
-            ])->groupBy(["idusuarios"])->sum(DB::raw('if(operation = "1", valor, -1 * valor)'));
-		//SELECT YEAR(creado) y, WEEKOFYEAR(creado) w, min(creado) as first, SUM(valor) total, GROUP_CONCAT(idservicios) ids 
-		//FROM `servicios` where estado = 'Terminado' and servicios.tipo_pago = "Tarjeta Crédito" group by YEAR(creado), WEEKOFYEAR(creado)
+            ])->groupBy(["idusuarios"])->sum(DB::raw("CASE WHEN operation = '1' THEN valor ELSE -1 * valor END"));
+		// Historical weekly grouping query removed during Postgres compatibility cleanup.
 		$tServiceCard = $connection->select("SELECT SUM(valor) gross, SUM(valor * $kfees) comision, SUM(valor) - SUM(valor * $kfees) total, GROUP_CONCAT(idservicios) ids 
 		FROM `servicios` where usuarios_id=$userId and estado = 'Terminado' and servicios.ispagado in ('Pendiente') 
 		and (servicios.tipo_pago = \"Tarjeta Crédito\" OR servicios.tipo_pago = \"Yappy\" OR servicios.tipo_pago = \"pago_cash\" OR servicios.tipo_pago = \"transferencia\")")[0]->total;
@@ -1223,7 +1228,7 @@ SELECT count(*), driver_services.service_id, driver_services.driver_id FROM `dri
 			cs.estado AS cestado,
 			cs.ispagado AS ispagado,
 			s.creado AS created_at,
-			if(s.tipo_pago = \'Yappy\', s.tipo_pago, \'Stripe\') AS gateway,
+			CASE WHEN s.tipo_pago = \'Yappy\' THEN s.tipo_pago ELSE \'Stripe\' END AS gateway,
 			cs.role
 		FROM
 			conductor_servicios AS cs
@@ -1235,21 +1240,17 @@ SELECT count(*), driver_services.service_id, driver_services.driver_id FROM `dri
 			AND (s.tipo_pago = \'Tarjeta Crédito\' or s.tipo_pago = \'Yappy\' or s.tipo_pago = \'pago_cash\' or s.tipo_pago = \'transferencia\' )
 		UNION
 		SELECT
-			sha1(concat(id, "_", if(operation = "2", \'Retiro\', \'Deposito\'))) as hcode,
+			sha1(concat(id, \'_\', CASE WHEN operation = \'2\' THEN \'Retiro\' ELSE \'Deposito\' END)) as hcode,
 			id,
 			0.0 as comision,
 			(bc.valor) AS total,
 			(bc.valor) AS valor,
 			tax as tax,
-			if(operation = "2", \'Retiro\', \'Deposito\') AS tipo_pago,
+			CASE WHEN operation = \'2\' THEN \'Retiro\' ELSE \'Deposito\' END AS tipo_pago,
 			bc.response AS estadoF,
-			if(bc.fecha is null, if(bc.updated_at is null,  \'\', bc.updated_at), bc.fecha) AS endTime,
+			COALESCE(bc.fecha, bc.updated_at, \'\') AS endTime,
 			response AS cestado,
-			IF(
-				bc.response = "preordered",
-				"Pendiente",
-				bc.response
-			) AS ispagado,
+			CASE WHEN bc.response = \'preordered\' THEN \'Pendiente\' ELSE bc.response END AS ispagado,
 			bc.created_at AS created_at,
 			bc.gateway_type AS gateway,
 			UPPER(roles.rol) AS role
@@ -1529,15 +1530,18 @@ SELECT count(*), driver_services.service_id, driver_services.driver_id FROM `dri
         }
         $connection = DB::connection("mysql_old");
         if($interval === 'semanal'){
+            $start = (new DateTime('monday last week'))->format('Y-m-d 00:00:00');
+            $end = (new DateTime('sunday this week'))->format('Y-m-d 23:59:59');
             return $connection->table("conductor_servicios")
                 ->where("conductores_id", $userId)
-                ->whereRaw("WEEK(endTime) BETWEEN (WEEK(CURRENT_DATE()) - 1) AND WEEK(CURRENT_DATE())")
+                ->whereBetween("endTime", [$start, $end])
                 ->whereIn("ispagado", ['Pendiente'])
                 ->update(["ispagado" => 'Pagado']);
         }
+        $start = (new DateTime('monday last week'))->format('Y-m-d 00:00:00');
         return $connection->table("conductor_servicios")
             ->where("conductores_id", $userId)
-            ->whereRaw("WEEK(endTime) < (WEEK(CURRENT_DATE()) - 1)")
+            ->where("endTime", "<", $start)
             ->whereIn("ispagado", ['Pendiente'])
             ->update(["ispagado" => 'Pagado']);
     }

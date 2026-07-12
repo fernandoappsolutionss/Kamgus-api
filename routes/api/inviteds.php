@@ -1,9 +1,6 @@
 <?php
 
-use App\Classes\StripeCustomClass;
-use App\Http\Controllers\NewPasswordController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\V2\Inviteds\ArticlesController;
 use App\Http\Controllers\V2\Inviteds\UserController as InvitedsUserController;
 use App\Http\Controllers\V2\Inviteds\ServiceController as InvitedsServiceController;
@@ -42,11 +39,5 @@ Route::prefix('v2')->group(function () {
 
         
 //        Route::post("create_customer", [UserPaymentController::class, 'create']);
-    });
-    Route::get('/old/{id?}', [UserController::class, "users_old_db"]);
-    Route::get('/invited/cs/{id}', function($id){
-        // STRIPE_SK_TEST defined automatically inside StripeCustomClass
-        // when env STRIPE_SECRET_TEST is set; no hardcoded key here.
-        return StripeCustomClass::getInstance()->getCheckoutSession($id);
     });
 });

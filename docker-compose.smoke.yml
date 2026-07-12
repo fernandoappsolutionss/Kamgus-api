@@ -1,0 +1,41 @@
+services:
+  pg:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kamgus_smoke
+      POSTGRES_USER: kamgus
+      POSTGRES_PASSWORD: kamgus
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kamgus -d kamgus_smoke"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks:
+      - smoke_internal
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    env_file:
+      - .env.smoke
+    working_dir: /app
+    volumes:
+      - ./:/app
+    depends_on:
+      pg:
+        condition: service_healthy
+    command: >
+      bash -lc "
+      cp .env.smoke .env &&
+      if [ ! -d vendor ]; then cp -a /tmp/kamgus-deps/vendor vendor; fi &&
+      composer dump-autoload --no-interaction &&
+      php artisan passport:keys --force &&
+      bash scripts/pg/smoke-t1.sh
+      "
+    networks:
+      - smoke_internal
+
+networks:
+  smoke_internal:
+    internal: true

@@ -107,7 +107,7 @@ class UserPaymentController extends Controller
                         "setupIntent" => $response["client_secret"],
                         'ephemeralKey' => $ephemeralKey->secret,
                         'customer' => $stripeCustomerId,
-                        'publishableKey' => $stripeClass->getPublicKey(),
+                        'publishableKey' => $stripeClass->getPublishableKey(),
                     ];
                 }
                 return response()->json([

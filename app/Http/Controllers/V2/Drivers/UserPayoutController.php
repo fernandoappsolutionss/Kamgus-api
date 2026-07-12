@@ -39,10 +39,10 @@ class UserPayoutController extends Controller
             //->where([["S.estado", "=", "Terminado"]])
             ->where([
                 ["DS.driver_id", "=", $driver->id], 
-                ["S.estado", "=", "Terminado"],
+	                ["S.estado", "=", "TERMINADO"],
                 ["DS.status", "=", "Terminado"],
             ])->whereIn("S.pago", [
-                "pendiente", 
+	                "PENDIENTE", 
             //	"transferido"
             ])
             ->whereIn("S.tipo_pago", [
@@ -63,7 +63,7 @@ class UserPayoutController extends Controller
                 DB::raw("DS.status as estadoF"),
                 DB::raw("DS.endTime as endTime"),
                 DB::raw("DS.status as cestado"),
-                DB::raw("if(S.estado = 'terminado', 'Yes','No') as ispagado"),
+                DB::raw("CASE WHEN S.estado = 'TERMINADO' THEN 'Yes' ELSE 'No' END as ispagado"),
                 "S.created_at AS created_at",
                 "S.tipo_pago as gateway",
                 DB::raw("'Conductor' as role"),
@@ -88,11 +88,11 @@ class UserPayoutController extends Controller
                 DB::raw("(transactions.amount - (transactions.amount * $kfees)) as total"),
                 "transactions.amount as valor",
                 //"transactions.tax as valor",
-                DB::raw("if(transactions.amount < 0, 'Retiro', 'Deposito')  as tipo_pago"),
+                DB::raw("CASE WHEN transactions.amount < 0 THEN 'Retiro' ELSE 'Deposito' END as tipo_pago"),
                 "transactions.status as estadoF",
                 'transactions.created_at AS endTime',
                 'transactions.status AS cestado',
-                DB::raw('if(transactions.status in ("succeeded", "complete"), "Yes", "No") AS ispagado'),
+                DB::raw("CASE WHEN transactions.status in ('succeeded', 'complete') THEN 'Yes' ELSE 'No' END AS ispagado"),
                 'transactions.created_at AS created_at',
                 "transactions.gateway as gateway",
                 "users.id as user_id",
@@ -178,7 +178,7 @@ class UserPayoutController extends Controller
                     ->leftJoin("models as Mo", "Mo.id", "=", "DV.model_id")
                     ->leftJoin("routes as R", "R.service_id", "=", "S.id")
                     ->whereIn("S.estado", ["ACTIVO","AGENDADO","INACTIVO","PENDIENTE","RESERVA","PROGRAMAR","REPETIR"])
-                    ->whereIn("DS.status", ["EN CURSO", "PENDIENTE", "AGENDADO", "TERMINADO"])
+                    ->whereIn("DS.status", ["En curso", "Pendiente", "Agendado", "Terminado"])
                     ->where("DS.driver_id", $driver->id)
                     ->orderBy("S.id", "DESC")
                     ->groupBy(["DS.id", "inicio_punto", "punto_final", "coordenas"])
@@ -192,7 +192,7 @@ class UserPayoutController extends Controller
                         "S.fecha_reserva AS servicio_fecha_reserva",
                         "DS.startTime AS conductor_servicios_fecha_reserva",
                         "DS.status AS conductor_servicios_estado",
-                        DB::raw("if(S.estado = 'AGENDADO', 'Agendado', S.estado) AS servicios_estado"),
+                        DB::raw("CASE WHEN S.estado = 'AGENDADO' THEN 'Agendado' ELSE S.estado END AS servicios_estado"),
 				        "S.id as servicio_id",
                         DB::raw('CONCAT("[", "{\"coord_punto_inicio\":\"", R.latitud_primer_punto, ",", R.longitud_primer_punto, "\"},{\"coord_punto_final\":\"", R.latitud_primer_punto, ",", R.longitud_primer_punto, "\"}","]") as coordenas'),
                         DB::raw("concat(C.nombres, ' ', C.apellidos) as passenger"),

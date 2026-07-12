@@ -54,10 +54,11 @@ class PaymentMController extends Controller
                 $balance = calculateDriverBalance(User::where("users.userable_id", $id)->where("users.userable_type", Driver::class)->first()->id, DB::table("transactions"));
                 $types = "\"Retiro\"";
             }
-            $data = DB::select("SELECT DP.driver_id, identifier, DP.id, ttype, if(DP.ttype in ('Efectivo', 'Card'), C.nombres, D.nombres) as nombres
-            , if(DP.ttype in ('Efectivo', 'Card'), C.apellidos, D.apellidos) as apellidos,
+            $data = DB::select("SELECT DP.driver_id, identifier, DP.id, ttype,
+            CASE WHEN DP.ttype in ('Efectivo', 'Card') THEN C.nombres ELSE D.nombres END as nombres,
+            CASE WHEN DP.ttype in ('Efectivo', 'Card') THEN C.apellidos ELSE D.apellidos END as apellidos,
             envio, fee, (? + envio) as total, DP.fecha_reserva, DP.status
-            FROM `driver_payouts` as DP 
+            FROM driver_payouts as DP 
             left join drivers as D on D.id = DP.driver_id 
             left join services as S on S.id = DP.id 
             left join users as U on U.id = S.user_id 
@@ -70,7 +71,7 @@ class PaymentMController extends Controller
                 "data" => $data,
                 "meta" => [
                     "total" => DB::select("SELECT count(*) as total
-                    FROM `driver_payouts` as DP 
+                    FROM driver_payouts as DP 
                     where DP.ttype in (\"Deposito\", \"Retiro\") and DP.status = ?
                     and driver_id=?
                     order by fecha_reserva DESC", [$status, $id])[0]->total,
@@ -264,8 +265,8 @@ class PaymentMController extends Controller
         ], self::HTTP_UNAUTHORIZED);
     }
     private function calculateTotals(){
-        return DB::select("SELECT sum(if(ttype = 'Efectivo', 0, DP.envio)) as envio, sum(DP.fee) as fee, sum(DP.total) as total
-        FROM `driver_payouts` as DP 
+        return DB::select("SELECT sum(CASE WHEN ttype = 'Efectivo' THEN 0 ELSE DP.envio END) as envio, sum(DP.fee) as fee, sum(DP.total) as total
+        FROM driver_payouts as DP 
         where !(DP.ttype in ('Deposito', 'Retiro') and DP.status not in ('succeeded', 'complete'))
         order by driver_id DESC")[0];
     }
@@ -325,19 +326,19 @@ class PaymentMController extends Controller
             $marks = "and DP.driver_id in (".(implode(", ",array_fill(0, count($ids), '?'))).")";
         }
         if ($text == ""){
-            return count(DB::select("SELECT count(*) as total FROM `driver_payouts` as DP 
+            return count(DB::select("SELECT count(*) as total FROM driver_payouts as DP 
             where !(DP.ttype in ('Deposito', 'Retiro') and DP.status not in ('succeeded', 'complete'))
             $marks
             group by driver_id
-            order by driver_id", array_merge($ids, [$status])));
+            order by driver_id", $ids));
         }
-            return count(DB::select("SELECT count(*) as total FROM `driver_payouts` as DP 
+            return count(DB::select("SELECT count(*) as total FROM driver_payouts as DP 
             left join drivers on drivers.id = DP.driver_id 
             where (drivers.nombres like ? or drivers.apellidos like ?)
             and !(DP.ttype in ('Deposito', 'Retiro') and DP.status not in ('succeeded', 'complete'))
             $marks
             group by driver_id
-            order by driver_id", array_merge($ids, ["%".$text."%", "%".$text."%", $status])));
+            order by driver_id", array_merge($ids, ["%".$text."%", "%".$text."%"])));
 
     }
     private function addSearchQuery($limit, $offset, $status = "preordered", $text = ""){
@@ -352,8 +353,8 @@ class PaymentMController extends Controller
         //exit(implode(",", $driverPayoutPending->toArray()));
         if ($text == ""){
             return DB::select("SELECT 
-                driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(if(DP.ttype = 'Efectivo', 0, DP.envio)) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos
-            FROM `driver_payouts` as DP 
+                driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(CASE WHEN DP.ttype = 'Efectivo' THEN 0 ELSE DP.envio END) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos
+            FROM driver_payouts as DP 
             left join drivers on drivers.id = DP.driver_id 
             where !(DP.ttype in ('Deposito', 'Retiro') and DP.status not in ('succeeded', 'complete'))
             $marks
@@ -361,8 +362,8 @@ class PaymentMController extends Controller
             order by driver_id DESC limit ? offset ?", array_merge($ids, [$limit, $offset]));
         }
         return DB::select("SELECT 
-            driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(if(DP.ttype = 'Efectivo', 0, DP.envio)) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos
-        FROM `driver_payouts` as DP 
+            driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(CASE WHEN DP.ttype = 'Efectivo' THEN 0 ELSE DP.envio END) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos
+        FROM driver_payouts as DP 
         left join drivers on drivers.id = DP.driver_id 
         where !(DP.ttype in ('Deposito', 'Retiro') and DP.status not in ('succeeded', 'complete'))
             $marks
@@ -383,25 +384,25 @@ class PaymentMController extends Controller
     private function addSearchQuery_($limit, $offset, $text = ""){
         if ($text == ""){
             return DB::select("SELECT driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(DP.envio) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos
-            FROM `driver_payouts` as DP 
+            FROM driver_payouts as DP 
             left join drivers on drivers.id = DP.driver_id 
-            where (if(DP.ttype in (\"Deposito\", \"Retiro\"), DP.status = \"preordered\", true)) 
+            where (DP.ttype not in ('Deposito', 'Retiro') or DP.status = 'preordered') 
             group by driver_id 
             order by driver_id DESC limit ? offset ?", [$limit, $offset]);
         }
         return DB::select("SELECT DP.driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(DP.envio) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos,
             DA.bank as bank_name, DA.account_number as bank_number
-        FROM `driver_payouts` as DP 
+        FROM driver_payouts as DP 
         left join drivers on drivers.id = DP.driver_id 
         left join driver_accounts as DA on drivers.id = DA.driver_id 
-        where (if(DP.ttype in (\"Deposito\", \"Retiro\"), DP.status = \"preordered\", true)) 
+        where (DP.ttype not in ('Deposito', 'Retiro') or DP.status = 'preordered') 
             AND (drivers.nombres like ? or drivers.apellidos like ?)
         group by driver_id 
         order by driver_id DESC limit ? offset ?", ["%".$text."%", "%".$text."%", $limit, $offset]);
         return DB::table("driver_payouts as DP")->select(DB::raw("driver_id, max(DP.fecha_reserva) as fecha_reserva, sum(DP.envio) as envio, sum(DP.fee) as fee, sum(DP.total) as total, drivers.nombres, drivers.apellidos"))
         ->leftJoin("drivers", "drivers.id", "=", "DP.driver_id")
         ->leftJoin("driver_accounts as DA", "drivers.id", "=", "DA.driver_id")
-        ->whereRaw("(if(DP.ttype in (\"Deposito\", \"Retiro\"), DP.status = \"preordered\", true))")
+        ->whereRaw("(DP.ttype not in ('Deposito', 'Retiro') or DP.status = 'preordered')")
         ->where("drivers.nombres", "like", '%'.$text.'%')
         ->groupBy("driver_id")
         ->orderBy("driver_id", "DESC")

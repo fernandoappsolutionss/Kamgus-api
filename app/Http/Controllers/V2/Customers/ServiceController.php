@@ -94,7 +94,7 @@ class ServiceController extends Controller
         $customer = Customer::where("id", $user->userable_id)->first();
         $rules = [
             
-            'valor' => 'required|numeric|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'inicio_punto' => 'required|max:255',
             'punto_final' => 'required|max:255',
             'coordenas' => 'required|max:255',
@@ -111,7 +111,7 @@ class ServiceController extends Controller
             'customerId' => 'required|max:255',
             'articulos' => 'nullable|max:255',
             'ExpirationDate' => 'nullable|max:255',
-            'precio' => 'required|max:255',
+            'precio' => 'required|numeric|gt:0|max:255',
             'description' => 'required_if:tipo_translado,Mudanza|max:255',
             'assistant' => 'nullable|max:255',
             'image_description.*' => 'nullable|image|max:50000',
@@ -122,7 +122,8 @@ class ServiceController extends Controller
 
         $this->validate($request, $rules);
         $assistant = empty($request->assistant) ? 0 : 1;
-        if($request->tipo_translado == 'Simple'){
+        $tipoServicio = strtoupper($request->tipo_translado);
+        if($tipoServicio == 'SIMPLE'){
 			$assistant = 1;
 		}
         //usuarios_id:2267
@@ -140,8 +141,8 @@ class ServiceController extends Controller
         $service->kilometraje = $request->kms;
         $service->fecha_reserva =  $request->fecha_reserva == 'now' ? Carbon::now() : Carbon::parse($request->fecha_reserva)->setTimezone(date_default_timezone_get());        
         $service->tipo_transporte = $ttype;
-        $service->estado = $request->estado;
-        $service->tipo_servicio = $request->tipo_translado;
+        $service->estado = strtoupper($request->estado);
+        $service->tipo_servicio = $tipoServicio;
         $service->precio_real = $request->valor;
         $service->precio_sugerido = $request->precio;
         $service->tipo_pago = $this->paymentType[$request->tipo_pago];
@@ -185,7 +186,7 @@ class ServiceController extends Controller
         $route->save();
 
         //Registrar articulos del servicio
-        if(!empty($request->articulos) && $request->tipo_translado == "Simple"){
+        if(!empty($request->articulos) && $tipoServicio == "SIMPLE"){
             //if($articles = json_decode('[{"idarticulo":" \r\n 2 ","cantidad":"1","nombre":"Colch\u00f3n Double \/ full o tama\u00f1o doble \/ matrimonio","m3":"3.5","m2":"1","peso":"80","tiempo":"10"}]')){
             if($articles = json_decode($request->articulos)){
                 foreach ($articles as $key => $article) {
@@ -319,7 +320,7 @@ class ServiceController extends Controller
         $query = DriverService::where([
             ['service_id', "=", $serviceId],
 			//['status', "=", "Pendiente"],
-        ])->whereIn("status", ["Pendiente", "Reserva"]);
+        ])->whereIn("status", ["Pendiente", "Agendado"]);
 		if( $query->count() > 0 ){
 			foreach ($query->get() as $key => $value) {
 				$subQuery[] = $value["driver_id"];
@@ -348,7 +349,7 @@ class ServiceController extends Controller
 			"usuarios.codigounico",
 			"usuarios.registro",
 			//"if(second(tiempo) > 30, minute(tiempo) + 1, minute(tiempo)) as timeOfArrival",
-			"UNIX_TIMESTAMP(ADDTIME(now(), precio_sugerido.tiempo)) * 1000 as timeOfArrival",
+			"precio_sugerido.created_at as timeOfArrival",
 			"if(avg(calificacion) is null, 0, avg(calificacion)) as rating",
 			"precio_sugerido.precio as price",
 			"m.nombre_marca as vehicle",
@@ -372,7 +373,7 @@ class ServiceController extends Controller
             ['u.userable_type', "=", Driver::class],
             ['service_id', "=", $serviceId],
         ])
-        ->whereIn("services.estado", ["Pendiente", "Reserva"])
+	        ->whereIn("services.estado", ["PENDIENTE", "RESERVA"])
         ->whereIn("DS.status", ["Pendiente"])
         ->whereIn("DS.driver_id", $subQuery)
         ->join("driver_services as DS", "DS.service_id", "=", "services.id")
@@ -467,7 +468,7 @@ class ServiceController extends Controller
                 }
                 $service->precio_real = $driverService->suggested_price;
                 if($service->estado == "PENDIENTE"){
-                    $service->estado = "Activo";
+                    $service->estado = "ACTIVO";
                     $service->driver_id = $driverId;
                     $service->save();
                 } else if($service->estado == "RESERVA"){
@@ -480,7 +481,7 @@ class ServiceController extends Controller
                 $driverService->driver_id = $driverId;
                 $driverService->startTime = date("Y-m-d H:i:s");
                 $driverService->endTime = Carbon::now()->addSeconds(Carbon::parse($driverService->endTime)->diffInSeconds(Carbon::parse($driverService->startTime)))->format("Y-m-d H:i:s");
-                $driverService->status = $service->estado == "AGENDADO" ? "Agendado" : 'En Curso';
+                $driverService->status = $service->estado == "AGENDADO" ? "Agendado" : 'En curso';
                 $driverService->confirmed = 'SI';
                 $driverService->ispaid = 'Pendiente';
                 $driverService->commission = '';
@@ -604,7 +605,7 @@ class ServiceController extends Controller
                         ["service_id", "=", $service_id],
                         ["status", "=", "Agendado"],
                     ])->first();
-                    $driverService->status = 'En Curso';
+                    $driverService->status = 'En curso';
                     $driverService->save();
                     $usersTokens = Driver::whereIn("drivers.id", [$driverService->driver_id])
                         ->join("users as U", "drivers.id", "=", "U.userable_id")
@@ -806,7 +807,7 @@ class ServiceController extends Controller
     private function cancelService($request, $userId){
 		
         $servicioId = $request->servicio_id;
-        $estado = "Cancelado";
+        $estado = "CANCELADO";
         $updated = Service::where("id", $servicioId)->update([
             "estado" => $estado,
         ]);
@@ -1052,12 +1053,12 @@ class ServiceController extends Controller
 			"u.id as codigounico",
 			"u.id as registro",
 			//"if(second(tiempo) > 30, minute(tiempo) + 1, minute(tiempo)) as timeOfArrival",
-			DB::raw("UNIX_TIMESTAMP(ADDTIME(now(),TIME_TO_SEC(TIMEDIFF(DS.endTime, DS.startTime)))) * 1000 as timeOfArrival"),
+			DB::raw("EXTRACT(EPOCH FROM (now() + (DS.endTime::timestamp - DS.startTime::timestamp))) * 1000 as timeOfArrival"),
 			"DS.suggested_price as price",
 			"DS.service_id as idservicios",
 			"DS.created_at as created_at"
 		];
-        //SELECT ADDTIME(now(),TIME_TO_SEC(TIMEDIFF(DS.endTime, DS.startTime))) as ti, UNIX_TIMESTAMP(now()) cu, TIME_TO_SEC(TIMEDIFF(DS.endTime, DS.startTime)) ss, DS.* FROM `driver_services` as DS where id = 79
+        // timeOfArrival is now plus the driver offer duration.
 
     }
     private function getHistoryServicesField(){

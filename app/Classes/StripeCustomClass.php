@@ -7,9 +7,6 @@ if (!defined('F_ENVIROMENT')) {
 }
 // Stripe secret comes from env. In production read STRIPE_SECRET; for local/staging
 // set STRIPE_SECRET (test key) directly. NEVER hardcode keys here.
-if (!defined('STRIPE_SK')) {
-    define('STRIPE_SK', env('STRIPE_SECRET', ''));
-}
 //importando libreria restful
 
 //use Restserver\Libraries\REST_Controller;
@@ -27,23 +24,31 @@ class StripeCustomClass {
         return self::$instance;
     }
     public function removePaymentMethod($id){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
         return $stripe->paymentMethods->detach(
             $id,
             []
           );
     }
+    public function getPublishableKey(){
+        return config('services.stripe.key', env('STRIPE_KEY', ''));
+    }
     public function getPublicKey(){
-        return (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST;
+        return $this->getPublishableKey();
+    }
+    public function getSecretKey(){
+        return defined("STRIPE_SECRET_TEST_RUNTIME")
+            ? STRIPE_SECRET_TEST_RUNTIME
+            : config('services.stripe.secret', env('STRIPE_SECRET', ''));
     }
     public function getPaymentIntent($paymentIntentId){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
         return $stripe->paymentIntents->retrieve($paymentIntentId, []);
 
     }
 
     public function refundPaymentIntent($paymentIntentId, $value, $title = "", $description = ""){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
    
         return $stripe->refunds->create([
             'payment_intent' => $paymentIntentId,
@@ -57,7 +62,7 @@ class StripeCustomClass {
         ]);
     }
     public function createCustomer($userId, $name, $lastname, $email, $stripeCustomerId = null){
-        \Stripe\Stripe::setApiKey((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        \Stripe\Stripe::setApiKey($this->getSecretKey());
 
         if(!empty($stripeCustomerId)){ //Evalua si el usuario ya tiene un customer asociado
           
@@ -83,7 +88,7 @@ class StripeCustomClass {
     }
     //Permite crear un Setup Intent para un customer especificado
     public function createSetupIntent($customer_id){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
 
         $intent = $stripe->setupIntents->create(
         [
@@ -98,7 +103,7 @@ class StripeCustomClass {
     }
 
     public function createEphemeralKeys($customer_id){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
         $ephemeralKey = $stripe->ephemeralKeys->create([
             'customer' => $customer_id,
           ], [
@@ -108,7 +113,7 @@ class StripeCustomClass {
     }
     public function getPaymentMethods($customer_id, $id = null, $after = null){
         $stripe = new \Stripe\StripeClient(
-            (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
           );
         if(!empty($id)){
             $result = $stripe->paymentMethods->retrieve(
@@ -120,7 +125,7 @@ class StripeCustomClass {
         }
 
         $stripe = new \Stripe\StripeClient(
-            (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
           );
         $params = [
             'type' => 'card'
@@ -136,7 +141,7 @@ class StripeCustomClass {
     }
     public function createPaymentIntent($params, $withConfirmation = true){
 
-        \Stripe\Stripe::setApiKey((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        \Stripe\Stripe::setApiKey($this->getSecretKey());
 
         try {
             if($withConfirmation){
@@ -159,7 +164,7 @@ class StripeCustomClass {
         }
     }
     public function addPaymentMethod($customerId, $cardParams){
-        $stripe = new \Stripe\StripeClient(!defined("STRIPE_SK_TEST") ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->getSecretKey());
          $pm = $stripe->paymentMethods->create([
             'type' => 'card',
             'card' => $cardParams,
@@ -171,7 +176,7 @@ class StripeCustomClass {
     }
     public function getCheckoutSession($id){
         $stripe = new \Stripe\StripeClient(
-            !defined("STRIPE_SK_TEST") ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
         );
         return $stripe->checkout->sessions->retrieve(
             $id,
@@ -180,16 +185,16 @@ class StripeCustomClass {
     }
     public function getPaymentIntentFromCheckoutSession($id){
         $stripe = new \Stripe\StripeClient(
-            !defined("STRIPE_SK_TEST") ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
         );
         return $this->getCheckoutSession($id)["payment_intent"];
 
     }
     public function createCheckoutSessionInvitado($serviceId, $driverId, $tipo_translado, $amount){
         $stripe = new \Stripe\StripeClient(
-            !defined("STRIPE_SK_TEST") ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
         );
-        $host = !defined("STRIPE_SK_TEST") ? "https://invitados.kamgus.com" : "https://localhost:4200";
+        $host = !defined("STRIPE_SECRET_TEST_RUNTIME") ? "https://invitados.kamgus.com" : "https://localhost:4200";
         $checkout_session = $stripe->checkout->sessions->create([
             'line_items' => [[
               'price_data' => [
@@ -212,40 +217,40 @@ class StripeCustomClass {
         return $checkout_session;
     }
     public function confirmPaymentTest($customer_id, $paymentMethodId, $amount, $fee, $currency = 'usd'){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->confirmPayment($customer_id, $paymentMethodId, $amount, $fee, $currency);
     }
     public function createCustomerTest($userId, $name, $lastname, $email, $stripeCustomerId = null){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->createCustomer($userId, $name, $lastname, $email, $stripeCustomerId);
     }
     public function createSetupIntentTest($customer_id){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->createSetupIntent($customer_id);
     }
     public function createEphemeralKeysTest($customer_id){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->createEphemeralKeys($customer_id);
         
     }
     public function getPaymentMethodsTest($customer_id){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->getPaymentMethods($customer_id);
         
     }
     public function removePaymentMethodTest($customer_id){
-        if(!defined("STRIPE_SK_TEST")){
-            define('STRIPE_SK_TEST', env('STRIPE_SECRET_TEST', env('STRIPE_SECRET', '')));
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define('STRIPE_SECRET_TEST_RUNTIME', env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
         }
         return $this->removePaymentMethod($customer_id);
         
@@ -266,7 +271,7 @@ class StripeCustomClass {
 
     public function getBalanceTransactions(){
         $stripe = new \Stripe\StripeClient(
-            !defined("STRIPE_SK_TEST") ? STRIPE_SK : STRIPE_SK_TEST
+            $this->getSecretKey()
         );
         return $stripe->balanceTransactions->all(['limit' => 100, "type" => "payment"]);
     }

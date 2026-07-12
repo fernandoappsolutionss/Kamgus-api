@@ -58,11 +58,11 @@ class ServiceController extends Controller
         $rules = [
             'tiempo' => 'required|max:255',
             'kilometraje' => 'required|max:255',
-            'valor' => 'required|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'id_tipo_camion' => 'required|max:255',
             'tipo_servicio' => 'required',
-            'precio_real' => 'required|max:255',
-            'precio_sugerido' => 'nullable|max:255',
+            'precio_real' => 'required|numeric|gt:0|max:255',
+            'precio_sugerido' => 'nullable|numeric|gt:0|max:255',
             'tipo_pago' => 'required|max:255',
             'descripcion' => 'required|max:255',
 
@@ -85,7 +85,7 @@ class ServiceController extends Controller
         $service->kilometraje = $request->kilometraje;
         $service->fecha_reserva = Carbon::now();
         $service->tipo_transporte = $request->id_tipo_camion;
-        $service->tipo_servicio = $request->tipo_servicio;
+        $service->tipo_servicio = strtoupper($request->tipo_servicio);
         $service->precio_real = $request->precio_real;
         $service->precio_sugerido = $request->precio_sugerido;
         $service->tipo_pago = $request->tipo_pago;
@@ -122,11 +122,11 @@ class ServiceController extends Controller
         $rules = [
             'tiempo' => 'required|max:255',
             'kilometraje' => 'required|max:255',
-            'valor' => 'required|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'id_tipo_camion' => 'required|max:255',
             'tipo_servicio' => 'required',
-            'precio_real' => 'required|max:255',
-            'precio_sugerido' => 'nullable|max:255',
+            'precio_real' => 'required|numeric|gt:0|max:255',
+            'precio_sugerido' => 'nullable|numeric|gt:0|max:255',
             'tipo_pago' => 'required|max:255',
             'descripcion' => 'required|max:255',
 
@@ -150,7 +150,7 @@ class ServiceController extends Controller
         $service->kilometraje = $request->kilometraje;
         $service->fecha_reserva = Carbon::now();
         $service->tipo_transporte = $request->id_tipo_camion;
-        $service->tipo_servicio = $request->tipo_servicio;
+        $service->tipo_servicio = strtoupper($request->tipo_servicio);
         $service->precio_real = $request->precio_real;
         $service->precio_sugerido = $request->precio_sugerido;
         $service->tipo_pago = $request->tipo_pago;

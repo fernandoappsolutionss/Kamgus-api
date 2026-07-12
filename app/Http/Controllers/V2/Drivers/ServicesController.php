@@ -68,9 +68,9 @@ class ServicesController extends Controller
         //
         $user = request()->user();
         //Service::whereIn("serviceS.estado", ["RESERVA"])->;
-        $serviceStatus = ["Pendiente", "Activo"]; //Search Activo because the invited services are send with that state
+        $serviceStatus = ["PENDIENTE", "ACTIVO"]; //Search Activo because the invited services are send with that state
         if (!empty(request()->agendado)) {
-            $serviceStatus = ["Reserva"];
+            $serviceStatus = ["RESERVA"];
         }
         $driverVehicles = DB::table("driver_vehicles")
             ->where("driver_id", $user->userable_id)
@@ -223,7 +223,7 @@ class ServicesController extends Controller
                     ->join("customers as C", "U.userable_id", "=", "C.id")
                     ->leftJoin("routes as R", "R.service_id", "=", "S.id")
                     //->whereIn("S.estado", ["ACTIVO","AGENDADO","INACTIVO","PENDIENTE","RESERVA","PROGRAMAR","REPETIR"])
-                    ->whereIn("driver_services.status", ["EN CURSO", "PENDIENTE", "AGENDADO", "TERMINADO"])
+                    ->whereIn("driver_services.status", ["En curso", "Pendiente", "Agendado", "Terminado"])
                     ->orderBy("driver_services.id", "DESC")
                     ->get($this->getServicesHistoryResponseFields());
                 $response = array('error' => false, 'msg' => 'Historial de pagos', 'history' => $services);
@@ -239,7 +239,7 @@ class ServicesController extends Controller
                     ->leftJoin("models as Mo", "Mo.id", "=", "DV.model_id")
                     ->leftJoin("routes as R", "R.service_id", "=", "S.id")
                     ->whereIn("S.estado", ["RESERVA", "AGENDADO"])
-                    ->whereIn("DS.status", ["EN CURSO", "AGENDADO"])
+                    ->whereIn("DS.status", ["En curso", "Agendado"])
                     ->where("DS.driver_id",  $user->userable_id)
                     ->orderBy("S.id", "DESC")
                     ->groupBy(["DS.id", "inicio_punto", "punto_final", "coordenas"])
@@ -354,7 +354,7 @@ class ServicesController extends Controller
                     $arr[] = $this->convertTTToS[$value];
                 }
                 $servicesCount = DB::table("services as S")
-                    ->whereIn("S.estado", ["Reserva"])
+                    ->whereIn("S.estado", ["RESERVA"])
                     ->whereNotIn("S.id", DriverService::where("driver_id", $driverId)->get()->pluck("service_id"))
                     ->whereIn("S.tipo_transporte", $arr)
                     ->whereNotIn( //Filtrar servicios con un conductor agendado
@@ -389,12 +389,13 @@ class ServicesController extends Controller
                 foreach ($transports as $key => $value) {
                     $arr[] = $this->convertTTToS[$value];
                 }
+                $now = Carbon::now();
                 $servicesCount = DB::table("services as S")
-                    ->where(function ($query) {
-                        $query->where('S.created_at', '>=', DB::raw("current_date()"))
-                            ->orWhereRaw('(TIMESTAMPDIFF(SECOND, now(), S.created_at) >= 0 and TIMESTAMPDIFF(SECOND, now(), S.created_at) < 900)');
+                    ->where(function ($query) use ($now) {
+                        $query->where('S.created_at', '>=', $now->copy()->startOfDay())
+                            ->orWhereBetween('S.created_at', [$now, $now->copy()->addMinutes(15)]);
                     })
-                    ->whereIn("S.estado", ["Pendiente"])
+                    ->whereIn("S.estado", ["PENDIENTE"])
                     ->whereNotIn("S.id", DriverService::where("driver_id", $driverId )->get()->pluck("service_id"))
                     ->whereIn("S.tipo_transporte", $arr)
                     ->get()
@@ -439,9 +440,9 @@ class ServicesController extends Controller
                         "status" => "Rechazado",
                     ]);
                     $service = Service::find($idservice);
-                    $estado = "Cancelado";
-                    if ($service->estado == "Agendado" || strtoupper($service->estado) == "AGENDADO") {
-                        $estado = "Reserva";
+                    $estado = "CANCELADO";
+                    if (strtoupper($service->estado) == "AGENDADO") {
+                        $estado = "RESERVA";
                     }
                     $service->estado = $estado;
                     $service->save();
@@ -513,7 +514,7 @@ class ServicesController extends Controller
                         $driverService->endTime = Carbon::now()->format("Y-m-d H:i:s");
                         $driverService->driver_id = $user->userable_id;
                         $driverService->status = $estado;
-                        $driverService->confirmed = "No";
+                        $driverService->confirmed = "NO";
                         $driverService->reservation_date = date("Y-m-d H:i:s");
                         $driverService->observation = "";
                         $driverService->suggested_price = 0;
@@ -539,7 +540,7 @@ class ServicesController extends Controller
                         ->where("driver_services.id", $driverServiceId)->first();
                     if(!empty($driverService)){
                         $service_id = $driverService->service_id;
-                        $estado = "Activo";
+                        $estado = "ACTIVO";
                         $estadoC = "En curso";
                         $updated = Service::where("id", $service_id)->update([
                             "estado" => $estado,
@@ -596,7 +597,7 @@ class ServicesController extends Controller
         $driverTimeT = "";
         $validator = Validator::make($request->all(), [
             'servicio_id'    => 'required|exists:services,id',
-            'precio' => 'required',
+            'precio' => 'required|numeric|gt:0',
             'user_lat' => Rule::requiredIf(Service::find($request->servicio_id)->estado != "RESERVA"),
             'user_lng' => Rule::requiredIf(Service::find($request->servicio_id)->estado != "RESERVA"),
         ]);
@@ -631,7 +632,7 @@ class ServicesController extends Controller
         $driverService->endTime = $dInterval->format("Y-m-d H:i:s");
         $driverService->driver_id = $user->userable_id;
         $driverService->status = $estado;
-        $driverService->confirmed = "No";
+        $driverService->confirmed = "NO";
         $driverService->reservation_date = date("Y-m-d H:i:s");
         $driverService->observation = "";
         $driverService->suggested_price = $precio;

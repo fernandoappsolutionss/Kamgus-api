@@ -62,71 +62,60 @@ class CancelOldServices extends Command
         $services = DB::select('SELECT
             COUNT(*) AS cantidad
             FROM
-                `services`
+                services
             WHERE
-                estado IN(\'Reserva\', \'Pendiente\', \'PROGRAMAR\') AND id NOT IN(
+                estado IN(\'RESERVA\', \'PENDIENTE\', \'PROGRAMAR\') AND id NOT IN(
                 SELECT
                     driver_services.service_id
                 FROM
                     driver_services
                 WHERE
                     driver_services.service_id = services.id AND driver_services.status IN(
-                        \'En Curso\',
+                        \'En curso\',
                         \'Pendiente\',
                         \'Terminado\',
                         \'Agendado\'
                     )
-            ) AND TIMESTAMPDIFF(
-                MINUTE,
-                services.created_at,
-                ?) > ?', [date('Y-m-d H:i:s'), self::TIME_LIMIT]);
+            ) AND (EXTRACT(EPOCH FROM (?::timestamp - services.created_at::timestamp)) / 60) > ?', [date('Y-m-d H:i:s'), self::TIME_LIMIT]);
         return count($services) > 0 ? $services[0]->cantidad > 0 : 0;
     }
     private function cancelServices(){
         /*
         $affected = DB::update(
             "UPDATE services 
-                set estado = 'Cancelado'  WHERE
-                estado IN('Reserva', 'Pendiente') AND id NOT IN(
+	                set estado = 'CANCELADO'  WHERE
+	                estado IN('RESERVA', 'PENDIENTE') AND id NOT IN(
                 SELECT
                     driver_services.service_id
                 FROM
                     driver_services
                 WHERE
                     driver_services.service_id = services.id AND driver_services.status IN(
-                        'En Curso',
+                        'En curso',
                         'Pendiente',
                         'Terminado',
                         'Agendado'
                     )
-            ) AND TIMESTAMPDIFF(
-                MINUTE,
-                if(services.fecha_reserva is not null, services.fecha_reserva, services.created_at),
-                '".date('Y-m-d H:i:s')."'
-            ) > ?".$this->serviceLimit,
+            ) AND (EXTRACT(EPOCH FROM ('".date('Y-m-d H:i:s')."'::timestamp - COALESCE(services.fecha_reserva, services.created_at)::timestamp)) / 60) > ?".$this->serviceLimit,
             [self::TIME_LIMIT]
         );
         */
         //if(services.fecha_reserva is not null, services.fecha_reserva, services.created_at)
         $services = DB::select("SELECT services.* FROM services 
                 WHERE
-                estado IN('Reserva', 'Pendiente', 'PROGRAMAR') AND id NOT IN(
+	                estado IN('RESERVA', 'PENDIENTE', 'PROGRAMAR') AND id NOT IN(
                 SELECT
                     driver_services.service_id
                 FROM
                     driver_services
                 WHERE
                     driver_services.service_id = services.id AND driver_services.status IN(
-                        'En Curso',
+                        'En curso',
                         'Pendiente',
                         'Terminado',
                         'Agendado'
                     )
-            ) AND TIMESTAMPDIFF(
-                MINUTE,
-                services.created_at,
-                '".date('Y-m-d H:i:s')."'
-            ) > ?".$this->serviceLimit,
+            ) AND (EXTRACT(EPOCH FROM ('".date('Y-m-d H:i:s')."'::timestamp - services.created_at::timestamp)) / 60) > ?".$this->serviceLimit,
             [self::TIME_LIMIT]);
         foreach ($services as $key => $service) {
             $this->cancelService($service->user_id, $service->id);
@@ -136,7 +125,7 @@ class CancelOldServices extends Command
     private function cancelService($userId, $servicioId){
 		
         //$servicioId = $request->servicio_id;
-        $estado = "Cancelado";
+        $estado = "CANCELADO";
         $updated = Service::where("id", $servicioId)->update([
             "estado" => $estado,
         ]);

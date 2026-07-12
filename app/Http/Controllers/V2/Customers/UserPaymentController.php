@@ -116,7 +116,7 @@ class UserPaymentController extends Controller
                         "setupIntent" => $response["client_secret"],
                         'ephemeralKey' => $ephemeralKey->secret,
                         'customer' => $stripeCustomerId,
-                        'publishableKey' => $stripeClass->getPublicKey(),
+                        'publishableKey' => $stripeClass->getPublishableKey(),
                     ];
                 }
                 return response()->json([
@@ -208,7 +208,7 @@ class UserPaymentController extends Controller
                 foreach ($tokens as $key => $token) {
                     notifyToDriver($token, "Estado del servicio", "Oferta aceptada", [
                         //"url" => "ServActScreen",
-                        "key" => $service->estado == "Reserva" ? "SCHEDULE_ACCEPTED_PRICE" : "ACCEPTED_PRICE",
+                        "key" => $service->estado == "RESERVA" ? "SCHEDULE_ACCEPTED_PRICE" : "ACCEPTED_PRICE",
                     ]);
                 }
                 return response()->json($result, self::HTTP_OK);

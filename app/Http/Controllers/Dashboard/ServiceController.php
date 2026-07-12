@@ -117,11 +117,11 @@ class ServiceController extends Controller
         $rules = [
             'tiempo' => 'required|max:255',
             'kilometraje' => 'required|max:255',
-            'valor' => 'required|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'id_tipo_camion' => 'required|max:255',
             'tipo_servicio' => 'required',
-            'precio_real' => 'required|max:255',
-            'precio_sugerido' => 'nullable|max:255',
+            'precio_real' => 'required|numeric|gt:0|max:255',
+            'precio_sugerido' => 'nullable|numeric|gt:0|max:255',
             'tipo_pago' => 'required|max:255',
             'descripcion' => 'required|max:255',
 
@@ -144,7 +144,7 @@ class ServiceController extends Controller
         $service->kilometraje = $request->kilometraje;
         $service->fecha_reserva = Carbon::now();
         $service->tipo_transporte = $request->id_tipo_camion;
-        $service->tipo_servicio = $request->tipo_servicio;
+        $service->tipo_servicio = strtoupper($request->tipo_servicio);
         $service->precio_real = $request->precio_real;
         $service->precio_sugerido = $request->precio_sugerido;
         $service->tipo_pago = $request->tipo_pago;
@@ -181,11 +181,11 @@ class ServiceController extends Controller
         $rules = [
             'tiempo' => 'required|max:255',
             'kilometraje' => 'required|max:255',
-            'valor' => 'required|max:255',
+            'valor' => 'required|numeric|gt:0|max:255',
             'id_tipo_camion' => 'required|max:255',
             'tipo_servicio' => 'required',
-            'precio_real' => 'required|max:255',
-            'precio_sugerido' => 'nullable|max:255',
+            'precio_real' => 'required|numeric|gt:0|max:255',
+            'precio_sugerido' => 'nullable|numeric|gt:0|max:255',
             'tipo_pago' => 'required|max:255',
             'descripcion' => 'required|max:255',
 
@@ -209,7 +209,7 @@ class ServiceController extends Controller
         $service->kilometraje = $request->kilometraje;
         $service->fecha_reserva = Carbon::now();
         $service->tipo_transporte = $request->id_tipo_camion;
-        $service->tipo_servicio = $request->tipo_servicio;
+        $service->tipo_servicio = strtoupper($request->tipo_servicio);
         $service->precio_real = $request->precio_real;
         $service->precio_sugerido = $request->precio_sugerido;
         $service->tipo_pago = $request->tipo_pago;
@@ -536,7 +536,7 @@ class ServiceController extends Controller
                 SELECT * FROM driver_services AS cs     
                 WHERE cs.driver_id = u.userable_id 
                 AND DATE(cs.created_at) = ?
-                AND cs.status IN('Pendiente','En Curso', 'Reservado', 'Agendado')
+                AND cs.status IN('Pendiente','En curso', 'Reservado', 'Agendado')
             )", [Driver::class, $data["idcamion"], $data['fecha_reserva']]);
         foreach ($drivers as $key => $driver) {
             $camionImage = Image::where([
@@ -557,7 +557,7 @@ class ServiceController extends Controller
         //$data['fecha_reserva'] = $data['fecha_reserva'][0];
         $data["idcamion"] = $data["idcamion"] == 8 ? 6 : $data["idcamion"];
         
-       //SELECT S.estado, cs.* FROM driver_services AS cs left join services as S on S.id = cs.service_id WHERE cs.status IN('Pendiente','En Curso', 'Reservado', 'Agendado');
+       //SELECT S.estado, cs.* FROM driver_services AS cs left join services as S on S.id = cs.service_id WHERE cs.status IN('Pendiente','En curso', 'Reservado', 'Agendado');
         $drivers = DB::select("SELECT u.id, u.email, u.direccion_ip, u.userable_id, u.userable_type, u.country_id,
         u.created_at, u.updated_at, u.stripe_id, u.pm_type, u.pm_last_four, u.trial_ends_at,
         u.status, v.plate, D.url_foto_perfil as foto_conductor, v.m3, v.burden, t.nombre, v.id as vehicle_id
@@ -571,7 +571,7 @@ class ServiceController extends Controller
             AND NOT EXISTS (
                 SELECT * FROM driver_services AS cs     
                 WHERE cs.driver_id = u.userable_id 
-                AND cs.status IN('Pendiente','En Curso', 'Reservado', 'Agendado')
+                AND cs.status IN('Pendiente','En curso', 'Reservado', 'Agendado')
             )", [Driver::class, $data["idcamion"]]);
         foreach ($drivers as $key => $driver) {
             $camionImage = Image::where([
@@ -628,7 +628,7 @@ class ServiceController extends Controller
         $fecha_reserva = explode(' ', $fecha_reserva);
         $fecha_reserva = $fecha_reserva[0];
         try {
-            $Activedrivers = DriverService::whereIn("status", ['Pendiente','En Curso', 'Reservado', 'Agendado'])->get()->pluck("driver_id");
+            $Activedrivers = DriverService::whereIn("status", ['Pendiente','En curso', 'Reservado', 'Agendado'])->get()->pluck("driver_id");
 
             dd($Activedrivers);
             if(K_HelpersV1::ENABLE){

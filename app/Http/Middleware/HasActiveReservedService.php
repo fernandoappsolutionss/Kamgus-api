@@ -25,7 +25,7 @@ class HasActiveReservedService
         }
         $hasReservedServices = DriverService::whereIn("status", ["Agendado"])
             ->join("services", "driver_services.service_id", "=", "services.id")
-            ->whereIn("services.estado", ["Agendado"])
+            ->whereIn("services.estado", ["AGENDADO"])
             ->where([
                 ["services.fecha_reserva", '<=', Carbon::now()->addHours(2)->format("Y-m-d H:i:s")],
                 ["driver_services.driver_id", "=", $user->userable_id],
@@ -41,4 +41,3 @@ class HasActiveReservedService
         return $response;
     }
 }
-

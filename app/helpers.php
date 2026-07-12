@@ -5,8 +5,20 @@ use App\Models\DriverService;
 use App\Models\Service;
 use App\Models\User;
 
+if(!function_exists('externalNotificationsDisabled')){
+    function externalNotificationsDisabled(){
+        return filter_var(
+            config('services.disable_external_notifications', env('DISABLE_EXTERNAL_NOTIFICATIONS', false)),
+            FILTER_VALIDATE_BOOLEAN
+        );
+    }
+}
+
 if(!function_exists('notifyToDriver')){
     function notifyToDriver($to, $title, $description, $data = []){
+        if(externalNotificationsDisabled()){
+            return null;
+        }
         //$expoNotification = new ExpoNotifications();
         //$expoNotification->notify($to, $title, $description, $data);		
 		$data['content-available'] = 1;
@@ -56,6 +68,9 @@ if(!function_exists('notifyToDriver')){
 if(!function_exists('notifyToCustomer')){
 	//peticion http POST a https://fcm.googleapis.com/v1/projects/kamgus/messages:send HTTP/1.1
 	function notifyToCustomer($to, $title, $description, $data = []){
+		if(externalNotificationsDisabled()){
+			return null;
+		}
 		$payload = array(
 			//'to' => 'ExponentPushToken[Jgi73JB6OxfeV0U38lqFoK]',
 			/*"to": [ // hasta 100 objetos
@@ -206,8 +221,8 @@ if(!function_exists('calculateDriverBalanceOld')){
 		if(K_HelpersV1::ENABLE){
 			return K_HelpersV1::getInstance()->calculateDriverBalance($userId);
 		}
-		$config = \DB::select('SELECT configurations.comision, balance_minimo from (
-			select max(if(configurations.id=1, comision, 0)) as comision, max(if(configurations.id=4, comision, 0)) as balance_minimo
+			$config = \DB::select('SELECT configurations.comision, balance_minimo from (
+			select max(CASE WHEN configurations.id=1 THEN comision ELSE 0 END) as comision, max(CASE WHEN configurations.id=4 THEN comision ELSE 0 END) as balance_minimo
 			from configurations ) as configurations');
 		$comision = 0;
 		//$minimunBalance = 0;
@@ -225,21 +240,21 @@ if(!function_exists('calculateDriverBalanceOld')){
 		])->sum("precio_real");
 			*/
 		$driverInfo = User::find($userId)->userable_id;
-		$serviceCash = Service::where([
-			["services.driver_id", "=", $driverInfo],
-			["services.tipo_pago", "=", "Efectivo"],
-			["services.estado", "=", "terminado"],
-		])
+			$serviceCash = Service::where([
+				["services.driver_id", "=", $driverInfo],
+				["services.tipo_pago", "=", "Efectivo"],
+				["services.estado", "=", "TERMINADO"],
+			])
 		//->join("transactions", "transactions.service_id", "=", "services.id")
 		->sum("precio_real")
 		;
 		$serviceCash *= $kfees;
-		$serviceCard = Service::where([
-			["services.driver_id", "=", $driverInfo],
-			//["services.tipo_pago", "=", "Card"],
-			["services.estado", "=", "terminado"],
-		])
-		->whereIn("services.tipo_pago", ["Card", "Yappy", "PagoCash", "transferencia"])
+			$serviceCard = Service::where([
+				["services.driver_id", "=", $driverInfo],
+				//["services.tipo_pago", "=", "Card"],
+				["services.estado", "=", "TERMINADO"],
+			])
+			->whereIn("services.tipo_pago", ["Card", "Yappy", "transferencia"])
 		//->join("transactions", "transactions.service_id", "=", "services.id")
 		->sum(DB::raw("(precio_real - (precio_real * $kfees))"))
 		;
@@ -253,7 +268,7 @@ if(!function_exists('calculateDriverBalanceOld')){
 				["status", "=", "succeeded"],
 			])
 			->whereNull("service_id")
-			//->select([DB::raw("sum(if(service_id is not null, if(services.tipo_pago = 'Efectivo', amount * $kfees, amount - (amount* $kfees)), amount)) as balance")]);
+				// Historical conditional sum query removed during Postgres compatibility cleanup.
 			->select([DB::raw("sum(amount) as balance")]);
 		//echo "<br>"."SCC: ".$serviceCard." B: ".$balance->get()[0]->balance." SE: ".$serviceCash."<br>";
 		return $serviceCard + $balance->get()[0]->balance - $serviceCash;
@@ -262,9 +277,9 @@ if(!function_exists('calculateDriverBalanceOld')){
 if(!function_exists('calculateDriverBalance')){
 	function calculateDriverBalance($userId, $table){
 		
-		$config = \DB::select('SELECT configurations.comision, balance_minimo from (
-			select max(if(configurations.id=1, comision, 0)) as comision, max(if(configurations.id=4, comision, 0)) as balance_minimo
-			from configurations ) as configurations');
+			$config = \DB::select('SELECT configurations.comision, balance_minimo from (
+				select max(CASE WHEN configurations.id=1 THEN comision ELSE 0 END) as comision, max(CASE WHEN configurations.id=4 THEN comision ELSE 0 END) as balance_minimo
+				from configurations ) as configurations');
 		$comision = 0;
 		//$minimunBalance = 0;
 		if( count($config) > 0 ){
@@ -281,34 +296,34 @@ if(!function_exists('calculateDriverBalance')){
 		])->sum("precio_real");
 			*/
 		$driverInfo = User::find($userId)->userable_id;
-		$ds = DriverService::where([
-			["driver_id", "=", $driverInfo]
-		])->where("driver_services.status", "terminado")->get();
-		$serviceCash = Service::where([
-			["services.driver_id", "=", $driverInfo],
-			["services.tipo_pago", "=", "Efectivo"],
-			["services.estado", "=", "terminado"],
-		])
-		
-		->whereIn("services.pago", [
-			"pendiente", 
-		//	"transferido"
-		])
+			$ds = DriverService::where([
+				["driver_id", "=", $driverInfo]
+			])->where("driver_services.status", "Terminado")->get();
+			$serviceCash = Service::where([
+				["services.driver_id", "=", $driverInfo],
+				["services.tipo_pago", "=", "Efectivo"],
+				["services.estado", "=", "TERMINADO"],
+			])
+			
+			->whereIn("services.pago", [
+				"PENDIENTE", 
+			//	"transferido"
+			])
 		->whereIn("services.id", $ds->pluck("service_id"))
 		//->join("transactions", "transactions.service_id", "=", "services.id")
 		->sum(DB::raw("(precio_real * $kfees)"))
 		;
 		//$serviceCash *= $kfees;
-		$serviceCard = Service::where([
-			//["driver_services.driver_id", "=", $driverInfo],
-			//["services.tipo_pago", "=", "Card"],
-			["services.estado", "=", "terminado"],
-		])
-		->whereIn("services.id", $ds->pluck("service_id"))
-		->whereIn("services.pago", [
-			"pendiente", 
-		//	"transferido"
-		])
+			$serviceCard = Service::where([
+				//["driver_services.driver_id", "=", $driverInfo],
+				//["services.tipo_pago", "=", "Card"],
+				["services.estado", "=", "TERMINADO"],
+			])
+			->whereIn("services.id", $ds->pluck("service_id"))
+			->whereIn("services.pago", [
+				"PENDIENTE", 
+			//	"transferido"
+			])
 		->whereIn("services.tipo_pago", [
 			"Card", 
 			"Yappy", 
@@ -331,7 +346,7 @@ if(!function_exists('calculateDriverBalance')){
 			])
 			->whereIn("status", \App\Models\Transaction::SUCCESS_STATES)
 			->whereNull("service_id")
-			//->select([DB::raw("sum(if(service_id is not null, if(services.tipo_pago = 'Efectivo', amount * $kfees, amount - (amount* $kfees)), amount)) as balance")]);
+				// Historical conditional sum query removed during Postgres compatibility cleanup.
 			->select([DB::raw("sum(transactions.amount) as balance")]);
 		
 			//echo "<br>"."SCC: ".$serviceCard." B: ".$balance->get()[0]->balance." SE: ".$serviceCash."<br>";
