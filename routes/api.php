@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\V2\QuoteController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -15,3 +16,5 @@ use Illuminate\Support\Facades\Route;
 Route::get('/v2', function (Request $request) {
     return "APIkamgus";
 });
+
+Route::post('/v2/quote', [QuoteController::class, 'store'])->middleware('throttle:30,1');
