@@ -74,6 +74,9 @@ class NotificationsController extends Controller
                 return $completed;
                 break;
             case 'fcmtopics':
+                if (config('services.disable_external_notifications', env('DISABLE_EXTERNAL_NOTIFICATIONS', false))) {
+                    return response()->json(['error' => false, 'msg' => 'Notificaciones externas deshabilitadas (DISABLE_EXTERNAL_NOTIFICATIONS)']);
+                }
                 $validator = Validator::make($request->all(), [
                     //'user'    => 'required|max:255|exists:users,email',
                     //'idusuario'    => 'required',

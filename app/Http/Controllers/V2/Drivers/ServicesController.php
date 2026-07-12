@@ -641,7 +641,7 @@ class ServicesController extends Controller
         $driverService->save();
 
         //Verificar que el servicio siga disponible para aceptar ofertas
-        $serviceAvailable = Service::where("id", $servicioId)->whereIn("estado", ["Pendiente", "Reserva"])->count();
+        $serviceAvailable = Service::where("id", $servicioId)->whereIn("estado", ["PENDIENTE", "RESERVA"])->count();
         if ($serviceAvailable > 0) {
             $response = array('error' => false, 'msg' => 'Su precio fue registrado para el servicio' );
 

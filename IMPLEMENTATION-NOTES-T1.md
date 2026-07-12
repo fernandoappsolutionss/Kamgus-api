@@ -57,3 +57,13 @@ docker compose -f docker-compose.smoke.yml up --build --abort-on-container-exit 
 - Confirmar que el contenedor `api` completa `scripts/pg/smoke-t1.sh`.
 - Correr PHPUnit completo si Hermes quiere ampliar más allá de los tests T1. No lo ejecuté localmente porque este worktree no tiene `vendor/bin/phpunit`.
 - No ejecuté Docker, no apliqué SQL a DB remota y no usé comandos `git`.
+
+## Post-auditoría Sonnet 5 (2026-07-12)
+- ALTA #1 corregido: `Drivers/ServicesController.php` accept — estados a MAYÚSCULAS (la oferta del conductor volvía siempre 0 y la transacción nunca commiteaba).
+- ALTA #2 corregido: `Customers/ServiceController.php` isFirstService + 2 whereNotIn adicionales (531/654) con el mismo bug de caja — sin fix, el descuento de primer servicio se regalaba siempre y los filtros de activos no excluían nada.
+- MEDIA #3 corregido: `Dashboard/NotificationsController.php` fcmtopics ahora respeta DISABLE_EXTERNAL_NOTIFICATIONS (hacía curl directo a FCM).
+- MEDIA #5 corregido: mapeo `"Transferencia" => "transferencia"` (el CHECK solo acepta minúscula) en Customers e Inviteds.
+- MEDIA #4 (GATE DE ENV): setear `DISABLE_EXTERNAL_NOTIFICATIONS=true` en Railway STAGING antes de exponer a QA — el default es fail-open (correcto para prod, riesgoso en staging con tokens reales).
+- MEDIA #6 (nota): `calculateDriverBalanceOld` perdió el literal muerto "PagoCash" del filtro — sin filas ni escritores con esa caja exacta; confirmado inofensivo, documentado.
+- BAJA #7 (mina para Ronda B): la reescritura de WEEK() en `K_HelpersV1::updateDriverServicePayment` (código muerto, ENABLE=false) cambia la semántica de semanas (dom-sáb → lun-dom) y era innecesaria (corre contra MySQL legacy); si Ronda B revive el double-write, restaurar el WEEK() original.
+- BAJA #9 (Ronda B): endurecer el test de literales para verificar call-site por call-site (grep de whereIn("estado") con caja vieja).

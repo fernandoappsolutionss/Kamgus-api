@@ -528,7 +528,7 @@ class ServiceController extends Controller
                 $driverId = Driver::whereRaw("SHA2(id, 256) = ?", [$request->driver_id])->first()->id;
                 $serviceId  = $request->service_id;
                 $paymentMethodId  = $request->payment_method;
-                $activeServices = Service::whereNotIn("estado", ["Anulado", "Terminado", "Cancelado", "Repetir"])->where("id", $serviceId)->orderBy("id", "DESC");
+                $activeServices = Service::whereNotIn("estado", ["ANULADO", "TERMINADO", "CANCELADO", "REPETIR"])->where("id", $serviceId)->orderBy("id", "DESC");
                 if($activeServices->count() <= 0){
                     $response = array('error' => true, 'msg' => 'Servicio no encontrado' );
                     return response()->json($response, self::HTTP_NOT_FOUND);
@@ -651,7 +651,7 @@ class ServiceController extends Controller
         //
     }
     public function getActiveService($user){
-        $services = Service::whereNotIn("estado", ["Anulado", "Terminado", "Cancelado", "Repetir", "Pendiente"])->where('user_id', $user->id)
+        $services = Service::whereNotIn("estado", ["ANULADO", "TERMINADO", "CANCELADO", "REPETIR", "PENDIENTE"])->where('user_id', $user->id)
             ->leftJoin("routes as R", "R.service_id", "=", "services.id")
             ->leftJoin("driver_services as DS", "services.id", "=", "DS.service_id")
             ->leftJoin("drivers as D", "DS.driver_id", "=", "D.id")
@@ -677,7 +677,7 @@ class ServiceController extends Controller
         $services = Service::where([
             ["user_id", "=",$user->id]
         ])
-            ->whereIn("estado", ['Terminado','Reserva'])
+            ->whereIn("estado", ['TERMINADO','RESERVA'])
             ->count();
 
         if($services == 0) {
