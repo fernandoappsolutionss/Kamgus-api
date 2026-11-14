@@ -37,4 +37,8 @@ return [
 
     'disable_external_notifications' => env('DISABLE_EXTERNAL_NOTIFICATIONS', false),
 
+    'google_maps' => [
+        'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
+    ],
+
 ];
