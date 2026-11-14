@@ -39,6 +39,10 @@ class NotifyServiceStatusByEmail implements ShouldQueue
      */
     public function handle()
     {
+        if(externalNotificationsDisabled()){
+            return;
+        }
+
         //
         Mail::to($this->emails)->send(new StatusService('Estado de servicio', "Hay un nuevo servicio disponible", "Pendiente"));
     }

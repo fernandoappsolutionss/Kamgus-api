@@ -65,3 +65,6 @@ docker-compose.override.yml
 Homestead.json
 Homestead.yaml
 .phpactor.json
+
+# Índice local de Graphify (no versionar)
+graphify-out/

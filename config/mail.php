@@ -13,7 +13,9 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'smtp'),
+    'default' => filter_var(env('DISABLE_EXTERNAL_NOTIFICATIONS', false), FILTER_VALIDATE_BOOLEAN)
+        ? 'array'
+        : env('MAIL_MAILER', 'smtp'),
 
     /*
     |--------------------------------------------------------------------------

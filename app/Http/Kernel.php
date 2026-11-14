@@ -4,17 +4,16 @@ namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-header('Access-Control-Allow-Origin: *');
-header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, authorization");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-header("Allow: GET, POST, OPTIONS, PUT, DELETE");
-$method = $_SERVER['REQUEST_METHOD'];
-if($method == "OPTIONS") {
+// Legacy CORS manual a nivel de archivo (reemplazo por middleware = Ronda B).
+// Guard CLI/tests: en web SAPI el comportamiento queda EXACTAMENTE igual.
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Access-Control-Allow-Origin: *');
     header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, authorization");
     header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
     header("Allow: GET, POST, OPTIONS, PUT, DELETE");
-    die();
+    if (($_SERVER['REQUEST_METHOD'] ?? '') == "OPTIONS") {
+        die();
+    }
 }
 
 class Kernel extends HttpKernel

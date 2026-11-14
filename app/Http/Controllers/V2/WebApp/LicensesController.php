@@ -15,7 +15,7 @@ class LicensesController extends Controller
     public function index()
     {
         //  
-        $licenses = License::get(["id", "name", "created_at as createdAt", "status", DB::raw("if(price >0, price, 'FREE') as price"), "id as id_licence", "name as title"]);
+        $licenses = License::get(["id", "name", "created_at as createdAt", "status", DB::raw("CASE WHEN price > 0 THEN price::text ELSE 'FREE' END as price"), "id as id_licence", "name as title"]);
         foreach ($licenses as $key => $license) {
             //Mapear atributos de la licencia. extraerlos de la tabla attribute_licence
             //$licenses[$key]->attributes = 

@@ -18,6 +18,10 @@ class K_FirebaseChannel
      */
     public function send($notifiable, Notification $notification)
     {
+        if(externalNotificationsDisabled()){
+            return [];
+        }
+
         $project = "kamgus";
         $url = 'https://fcm.googleapis.com/v1/projects/'.$project.'/messages:send';
         $data = $notification->toFirebase($notifiable);

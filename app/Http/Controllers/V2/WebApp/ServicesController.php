@@ -178,7 +178,7 @@ class ServicesController extends Controller
         if(DriverService::where([
             ["service_id", "=", $serviceId],
             ["driver_id", "!=", $driverId],
-            ])->whereIn("status", ["Agendado", 'En Curso'])->count() > 0){
+            ])->whereIn("status", ["Agendado", 'En curso'])->count() > 0){
             DriverService::where("service_id", $serviceId)->update([
                 "status" => "Rechazado",
             ]);
@@ -194,7 +194,7 @@ class ServicesController extends Controller
         
         $driverService->endTime = date("Y-m-d H:i:s");
         $driverService->driver_id = $driverId;
-        $driverService->status = $service->estado == "AGENDADO" ? "Agendado" : 'En Curso';
+        $driverService->status = $service->estado == "AGENDADO" ? "Agendado" : 'En curso';
         $driverService->confirmed = 'SI';
         $driverService->reservation_date = date("Y-m-d H:i:s");
         $driverService->observation = "";

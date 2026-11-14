@@ -66,7 +66,7 @@ class StripeCustomer {
                 "setupIntent" => $response["client_secret"],
                 'ephemeralKey' => $ephemeralKey->secret,
                 'customer' => $user->StripeCustomerId,
-                'publishableKey' => (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST,
+                'publishableKey' => $this->stripeCustomClass->getPublishableKey(),
             ];
         }
         $this->response([
@@ -140,16 +140,13 @@ class StripeCustomer {
     public function payment_methods_get($id = null){
         $request = $this->get();
         $user_id = $request["user_id"];
-        if(!defined("STRIPE_SK_TEST")){
-            // hardcoded Stripe key removed; use env('STRIPE_SECRET') / env('STRIPE_SECRET_TEST')
-        }
         $query = $this->db->query('SELECT StripeCustomerId
 			FROM customers 
 			WHERE idusuarios = '.intval($user_id).' LIMIT 1');
         if( $query->num_rows() > 0 ){
             if(!empty($id)){
                 $stripe = new \Stripe\StripeClient(
-                    (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST
+                    $this->stripeCustomClass->getSecretKey()
                   );
                 $result = $stripe->paymentMethods->retrieve(
                     $id,
@@ -169,7 +166,7 @@ class StripeCustomer {
                 ) , REST_Controller::HTTP_NOT_FOUND );
             }
             $stripe = new \Stripe\StripeClient(
-                (!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST
+                $this->stripeCustomClass->getSecretKey()
               );
             $params = [
                 'type' => 'card'
@@ -236,9 +233,7 @@ class StripeCustomer {
 
     //Cada usuario  de kamgus usuario debe tener un id de customer
     public function createCustomer($db, $userId){
-        if(!defined("STRIPE_SK_TEST")){
-            \Stripe\Stripe::setApiKey(STRIPE_SK);
-        }
+        \Stripe\Stripe::setApiKey($this->stripeCustomClass->getSecretKey());
         $q = $db->get_where("customers", [
             "idusuarios" => $userId,
         ]);
@@ -287,9 +282,7 @@ class StripeCustomer {
     }
     //Consultar el metodo de pago (tarjeta) por defecto del conductor
     public function getDefaultPaymentMethodCustomerInfo($customerId){
-        if(!defined("STRIPE_SK_TEST")){
-            \Stripe\Stripe::setApiKey(STRIPE_SK);
-        }
+        \Stripe\Stripe::setApiKey($this->stripeCustomClass->getSecretKey());
         $customer = \Stripe\Customer::retrieve(
             $customerId, 
             []
@@ -351,14 +344,16 @@ class StripeCustomer {
 	}
     //Confirma un payment intent para finalizar proceso de pago con stripe en modo de prueba.
     public function confirmPaymentTest($customer_id, $paymentMethodId, $amount, $currency = 'usd'){
-        define("STRIPE_SK_TEST", ''  /* removed-key */);
+        if(!defined("STRIPE_SECRET_TEST_RUNTIME")){
+            define("STRIPE_SECRET_TEST_RUNTIME", env('STRIPE_SECRET_TEST', config('services.stripe.secret', env('STRIPE_SECRET', ''))));
+        }
         
         return $this->confirmPayment($customer_id, $paymentMethodId, $amount, $currency);
     }
     
     //Permite crear un Setup Intent para un customer especificado
     private function createSetupIntent($customer_id){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->stripeCustomClass->getSecretKey());
 
         $intent = $stripe->setupIntents->create(
         [
@@ -373,7 +368,7 @@ class StripeCustomer {
     }
     
     private function removePaymentMethod($id){
-        $stripe = new \Stripe\StripeClient((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        $stripe = new \Stripe\StripeClient($this->stripeCustomClass->getSecretKey());
         return $stripe->paymentMethods->detach(
             $id,
             []
@@ -385,7 +380,7 @@ class StripeCustomer {
     //Crea un payment intent que representa un pago
     private function createPaymentIntent($params, $withConfirmation = true){
 
-        \Stripe\Stripe::setApiKey((!defined("STRIPE_SK_TEST")) ? STRIPE_SK : STRIPE_SK_TEST);
+        \Stripe\Stripe::setApiKey($this->stripeCustomClass->getSecretKey());
 
         try {
             if($withConfirmation){

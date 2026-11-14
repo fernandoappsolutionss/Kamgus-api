@@ -1,8 +1,5 @@
 <?php
 
-use App\Classes\K_HelpersV1;
-use App\Classes\StripeCustomClass;
-use App\Http\Controllers\NewPasswordController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\V2\Drivers\UserController as DriversUserController;
@@ -84,41 +81,4 @@ Route::prefix('v2')->group(function () {
         
    
     });
-    /**
-     * Servicios para testing
-     */
-    Route::get('/old', [UserController::class, "users_old_db"]);
-    Route::get('/db/{id}', function($id){ //test
-        $userBalance = calculateDriverBalance($id, DB::table("transactions"));
-        return "<br>".K_HelpersV1::getInstance()->calculateDriverBalance($id)." V2: ".$userBalance;
-    });
-    Route::get('/balances', function(){ //test
-        //return StripeCustomClass::getInstance()->getBalanceTransactions();
-    });
-    Route::get('/finish_service', function(){ //test
-        K_HelpersV1::getInstance()->setServRecibido(array_merge(["punto" => "B", "nombre_recep" => "test", "identidad_recep" => "6789",], ["service_id" => 7931]), 2871);
-    });
-
-    Route::get("driver/test_timezone", function(){
-        $date = new DateTime( "2023-09-24 18:00:00" );
-        $fechNueva =  $date->format('Y-m-d H:i:s');
-        //return App\Models\User::find(2871)->userable->nombres;
-		$response = array(
-			'error' => false, 
-			'msg' => date_default_timezone_get(), 
-			"time" => date("Y-m-d H:i:s"),
-			"fech" => $fechNueva,
-		);
-        return response()->json($response);
-    });
-    Route::get("driver/notify/{id}", function($id){
-        $user = App\Models\User::find($id);
-        $fcmTokens = $user->fcmtokens()->orderBy("updated_at", "DESC")->get();
-        //dd();
-        $array = $fcmTokens->pluck("token")->toArray();
-        $response = $user->notify(new App\Notifications\K_SendPushNotification("Prueba", "Mensaje de prueba", $array,["url" => "driver-confirmation"]));
-        //$response = notifyToCustomer($user, "Prueba", "Mensaje de prueba", ["url" => "driver-confirmation"]);
-        return response()->json(["error" => false, "msg" => "Notificacion enviada", "response" => $response]);
-    });
-
 });

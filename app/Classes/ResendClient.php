@@ -44,6 +44,10 @@ class ResendClient
         ?string $from = null,
         array $extra = []
     ): array {
+        if (externalNotificationsDisabled()) {
+            return ['ok' => true, 'id' => null, 'error' => null, 'status' => 0, 'disabled' => true];
+        }
+
         $apiKey = env('RESEND_API_KEY');
 
         if (empty($apiKey)) {

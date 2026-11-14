@@ -1,0 +1,14 @@
+*.md
+*.txt
+*.ico
+*.rnd
+.rnd
+*.yml
+*.yaml
+*.html
+_migration/
+storage/
+public/web.config
+public/.htaccess
+*.example
+.env*

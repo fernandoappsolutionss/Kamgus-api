@@ -55,9 +55,9 @@ class ServiceStatusController extends Controller
             "SS.it_was_read", 
             "SS.created_at as creado", 
             "SS.created_at as date", 
-            DB::raw("MONTH(SS.created_at) as month"), 
-            DB::raw("YEAR(SS.created_at) as year"), 
-            DB::raw("DAY(SS.created_at) as day"), 
+            DB::raw("EXTRACT(MONTH FROM SS.created_at) as month"), 
+            DB::raw("EXTRACT(YEAR FROM SS.created_at) as year"), 
+            DB::raw("EXTRACT(DAY FROM SS.created_at) as day"), 
             DB::raw("TIME(SS.created_at) as time"), 
         ])->get());
         return response()->json( $response , self::HTTP_OK );
@@ -107,7 +107,7 @@ class ServiceStatusController extends Controller
             }
             $driverService = DriverService::where([
                 ["service_id", "=", $serviceId],
-            ])->whereIn("status", ["En Curso", "Agendado"])->first();
+            ])->whereIn("status", ["En curso", "Agendado"])->first();
             if(!empty($driverService)){
 
                 $userDriver = User::where([
